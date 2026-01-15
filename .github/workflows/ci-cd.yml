@@ -66,7 +66,7 @@ jobs:
       run: |
         cd backend
         python manage.py migrate
-        python -m pytest apps/users/tests.py apps/schematics/tests.py apps/scanning/tests.py apps/storage/tests.py --cov=apps --cov-report=xml
+        python -m pytest apps/*/tests.py --cov=apps --cov-report=xml
     
     - name: Upload coverage
       uses: codecov/codecov-action@v3
