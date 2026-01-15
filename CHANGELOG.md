@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2024-01-15
+
+### Security
+- **CRITICAL**: Updated axios from 1.6.2 to 1.12.0 to fix multiple vulnerabilities:
+  - DoS attack through lack of data size check
+  - SSRF and credential leakage via absolute URL
+  - Server-Side Request Forgery in Server Actions
+- **CRITICAL**: Updated Next.js from 14.0.4 to 14.2.35 to fix multiple vulnerabilities:
+  - Denial of Service with Server Components
+  - Authorization bypass vulnerability
+  - Cache poisoning
+  - Server-Side Request Forgery in Server Actions
+  - Authorization bypass in middleware
+- **CRITICAL**: Updated Django from 4.2.8 to 4.2.26 to fix:
+  - SQL injection in column aliases
+  - SQL injection in HasKey(lhs, rhs) on Oracle
+  - Denial-of-service attack in intcomma template filter
+  - SQL injection via _connector keyword argument in QuerySet
+  - Denial-of-service in HttpResponseRedirect on Windows
+- **HIGH**: Updated cryptography from 41.0.7 to 42.0.4 to fix:
+  - NULL pointer dereference with pkcs12.serialize_key_and_certificates
+  - Bleichenbacher timing oracle attack vulnerability
+- **HIGH**: Updated gunicorn from 21.2.0 to 22.0.0 to fix:
+  - HTTP Request/Response Smuggling vulnerability
+  - Request smuggling leading to endpoint restriction bypass
+- **MEDIUM**: Updated Pillow from 10.1.0 to 10.3.0 to fix buffer overflow vulnerability
+- **MEDIUM**: Updated python-multipart from 0.0.6 to 0.0.18 to fix:
+  - Denial of service via deformation multipart/form-data boundary
+  - Content-Type Header ReDoS vulnerability
+
 ## [1.0.0] - 2024-01-15
 
 ### Added
