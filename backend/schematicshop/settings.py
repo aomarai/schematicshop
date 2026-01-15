@@ -180,12 +180,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 # Object Storage (S3/MinIO)
-USE_S3 = env.bool('USE_S3', default=True)
+USE_S3 = env.bool('USE_S3', default=False)
 
 if USE_S3:
-    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
+    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
+    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', default='schematicshop')
     AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL', default=None)
     AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='us-east-1')
     AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN', default=None)
@@ -197,7 +197,7 @@ if USE_S3:
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # ClamAV Settings
-CLAMAV_ENABLED = env.bool('CLAMAV_ENABLED', default=True)
+CLAMAV_ENABLED = env.bool('CLAMAV_ENABLED', default=False)
 CLAMAV_HOST = env('CLAMAV_HOST', default='localhost')
 CLAMAV_PORT = env.int('CLAMAV_PORT', default=3310)
 

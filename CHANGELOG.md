@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2024-01-15
+
+### Fixed
+- Added missing Django database migrations for all apps (users, schematics, scanning, storage)
+- Fixed Django settings to use sensible defaults (USE_S3=False, CLAMAV_ENABLED=False) for development/testing
+- Updated CI/CD pipeline configuration to properly run tests with environment variables
+- Removed package-lock.json dependency from frontend CI/CD workflow
+- Updated .env.example to reflect new default configuration values
+
+### Changed
+- AWS credentials now have defaults in settings.py to allow easier development setup
+- ClamAV is now disabled by default for development environments
+- S3 storage is now disabled by default for development environments
+
 ## [1.0.1] - 2024-01-15
 
 ### Security
