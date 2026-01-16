@@ -22,7 +22,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     """Get and update user profile"""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_object(self):
         return self.request.user
 
@@ -41,10 +41,10 @@ def user_stats(request):
     """Get user statistics"""
     user = request.user
     from apps.schematics.models import Schematic
-    
+
     total_schematics = Schematic.objects.filter(owner=user).count()
     public_schematics = Schematic.objects.filter(owner=user, is_public=True).count()
-    
+
     return Response({
         'total_schematics': total_schematics,
         'public_schematics': public_schematics,

@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for user profile"""
     storage_available = serializers.ReadOnlyField()
     storage_percentage = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = User
         fields = [
@@ -26,16 +26,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
-    
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password": "Passwords don't match"})
         return attrs
-    
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)

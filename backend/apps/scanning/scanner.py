@@ -12,15 +12,15 @@ class VirusScanner:
     Wrapper for ClamAV virus scanner
     ClamAV is always required for security. Files are queued if ClamAV is unavailable.
     """
-    
+
     def __init__(self):
         self.host = settings.CLAMAV_HOST
         self.port = settings.CLAMAV_PORT
-    
+
     def scan_file(self, file_path):
         """
         Scan a file for viruses
-        
+
         Returns:
             dict: {
                 'is_infected': bool,
@@ -31,13 +31,13 @@ class VirusScanner:
         try:
             import clamd
             cd = clamd.ClamdNetworkSocket(self.host, self.port)
-            
+
             # Check if ClamAV is available
             cd.ping()
-            
+
             # Scan the file
             result = cd.scan(file_path)
-            
+
             if result:
                 file_result = result.get(file_path)
                 if file_result:
@@ -49,14 +49,14 @@ class VirusScanner:
                             'virus_name': virus_name,
                             'status': 'infected'
                         }
-            
+
             logger.info(f"File {file_path} is clean")
             return {
                 'is_infected': False,
                 'virus_name': None,
                 'status': 'clean'
             }
-            
+
         except Exception as e:
             logger.error(f"Error scanning file {file_path}: {str(e)}")
             # ClamAV unavailable or error - file should be queued for retry
@@ -66,7 +66,7 @@ class VirusScanner:
                 'status': 'error',
                 'error': str(e)
             }
-    
+
     def scan_stream(self, file_stream):
         """
         Scan a file stream for viruses
@@ -75,9 +75,9 @@ class VirusScanner:
             import clamd
             cd = clamd.ClamdNetworkSocket(self.host, self.port)
             cd.ping()
-            
+
             result = cd.instream(file_stream)
-            
+
             if result and result.get('stream'):
                 status, virus_name = result['stream']
                 if status == 'FOUND':
@@ -86,13 +86,13 @@ class VirusScanner:
                         'virus_name': virus_name,
                         'status': 'infected'
                     }
-            
+
             return {
                 'is_infected': False,
                 'virus_name': None,
                 'status': 'clean'
             }
-            
+
         except Exception as e:
             logger.error(f"Error scanning stream: {str(e)}")
             return {
