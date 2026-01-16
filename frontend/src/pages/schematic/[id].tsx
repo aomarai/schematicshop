@@ -1,8 +1,9 @@
 import { useRouter } from 'next/router'
+import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Download, Heart, Eye, Calendar, User, Tag, FileText, Share2, AlertTriangle } from 'lucide-react'
+import { Download, Heart, Eye, Calendar, User, Tag, FileText, Share2, AlertTriangle, X } from 'lucide-react'
 import { useQuery } from 'react-query'
 import axios from 'axios'
 import Layout from '@/components/Layout'
@@ -12,6 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export default function SchematicDetail() {
   const router = useRouter()
   const { id } = router.query
+  const [downloadError, setDownloadError] = useState('')
 
   const { data: schematic, isLoading } = useQuery(
     ['schematic', id],
@@ -26,11 +28,15 @@ export default function SchematicDetail() {
 
   const handleDownload = async () => {
     try {
+      setDownloadError('')
       const response = await axios.post(`${API_URL}/api/schematics/${id}/download/`)
       window.open(response.data.download_url, '_blank')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download error:', error)
-      alert('Failed to download schematic')
+      setDownloadError(
+        error.response?.data?.error || 
+        'Failed to download schematic. Please try again.'
+      )
     }
   }
 
@@ -191,6 +197,28 @@ export default function SchematicDetail() {
                 <Share2 size={20} />
                 Share
               </button>
+
+              {/* Download Error Message */}
+              {downloadError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg"
+                >
+                  <div className="flex items-start gap-2 text-red-800">
+                    <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 text-sm">
+                      <p>{downloadError}</p>
+                    </div>
+                    <button
+                      onClick={() => setDownloadError('')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Stats */}
               <div className="space-y-4 pt-6 border-t">

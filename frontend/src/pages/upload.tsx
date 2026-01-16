@@ -69,11 +69,11 @@ export default function Upload() {
       formData.append('category', category)
       formData.append('is_public', String(isPublic))
       
-      // Parse and add tags
+      // Parse and add tags as array (backend expects tag_names as ListField)
       const tagList = tags.split(',').map(tag => tag.trim()).filter(Boolean)
-      tagList.forEach(tag => {
-        formData.append('tags', tag)
-      })
+      if (tagList.length > 0) {
+        formData.append('tag_names', JSON.stringify(tagList))
+      }
 
       const response = await axios.post(
         `${API_URL}/api/schematics/`,
