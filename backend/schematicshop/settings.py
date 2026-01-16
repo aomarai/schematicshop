@@ -243,33 +243,43 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
 
 # Social Account Providers Configuration
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': [
-            'profile',
-            'email',
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'online',
-        },
+# Note: Providers will only be active if credentials are provided
+SOCIALACCOUNT_PROVIDERS = {}
+
+# Google OAuth
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default=None)
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default=None)
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['google'] = {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
         'APP': {
-            'client_id': env('GOOGLE_CLIENT_ID', default=''),
-            'secret': env('GOOGLE_CLIENT_SECRET', default=''),
-        }
-    },
-    'discord': {
-        'APP': {
-            'client_id': env('DISCORD_CLIENT_ID', default=''),
-            'secret': env('DISCORD_CLIENT_SECRET', default=''),
-        }
-    },
-    'github': {
-        'APP': {
-            'client_id': env('GITHUB_CLIENT_ID', default=''),
-            'secret': env('GITHUB_CLIENT_SECRET', default=''),
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': GOOGLE_CLIENT_SECRET,
         }
     }
-}
+
+# Discord OAuth
+DISCORD_CLIENT_ID = env('DISCORD_CLIENT_ID', default=None)
+DISCORD_CLIENT_SECRET = env('DISCORD_CLIENT_SECRET', default=None)
+if DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['discord'] = {
+        'APP': {
+            'client_id': DISCORD_CLIENT_ID,
+            'secret': DISCORD_CLIENT_SECRET,
+        }
+    }
+
+# GitHub OAuth
+GITHUB_CLIENT_ID = env('GITHUB_CLIENT_ID', default=None)
+GITHUB_CLIENT_SECRET = env('GITHUB_CLIENT_SECRET', default=None)
+if GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['github'] = {
+        'APP': {
+            'client_id': GITHUB_CLIENT_ID,
+            'secret': GITHUB_CLIENT_SECRET,
+        }
+    }
 
 # Authentik OIDC Configuration (if using Authentik as main provider)
 AUTHENTIK_URL = env('AUTHENTIK_URL', default='http://localhost:9002')

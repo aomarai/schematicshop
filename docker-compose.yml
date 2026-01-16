@@ -91,11 +91,11 @@ services:
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentikpassword
-      AUTHENTIK_SECRET_KEY: "change-this-secret-key-in-production-please"
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-change-this-secret-key-in-production-please}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
       # OIDC/OAuth settings
-      AUTHENTIK_BOOTSTRAP_PASSWORD: "admin"
-      AUTHENTIK_BOOTSTRAP_TOKEN: "bootstrap-token"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin}
+      AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN:-bootstrap-token}
     volumes:
       - authentik_media:/media
       - authentik_templates:/templates
@@ -115,11 +115,13 @@ services:
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: authentikpassword
-      AUTHENTIK_SECRET_KEY: "change-this-secret-key-in-production-please"
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-change-this-secret-key-in-production-please}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
     volumes:
       - authentik_media:/media
       - authentik_templates:/templates
+      # Note: Docker socket access is required for authentik-worker to manage containers
+      # In production, consider using a Docker socket proxy for enhanced security
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - authentik-postgres

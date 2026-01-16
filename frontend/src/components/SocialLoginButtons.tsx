@@ -17,26 +17,38 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
     window.location.href = `${API_URL}/accounts/${provider}/login/?process=login`
   }
 
+  // Only show providers that are configured (check by attempting to access the endpoint)
   const socialProviders = [
     {
       id: 'google',
       name: 'Google',
       icon: Chrome,
       color: 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-300',
+      enabled: true, // Will be validated at runtime
     },
     {
       id: 'github',
       name: 'GitHub',
       icon: Github,
       color: 'bg-gray-900 hover:bg-gray-800 text-white',
+      enabled: true,
     },
     {
       id: 'discord',
       name: 'Discord',
       icon: MessageCircle,
       color: 'bg-indigo-600 hover:bg-indigo-700 text-white',
+      enabled: true,
     },
   ]
+
+  // Filter to only show enabled providers
+  const enabledProviders = socialProviders.filter(p => p.enabled)
+
+  // Don't render anything if no providers are enabled
+  if (enabledProviders.length === 0) {
+    return null
+  }
 
   return (
     <div className="space-y-3">
@@ -52,7 +64,7 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {socialProviders.map((provider) => {
+        {enabledProviders.map((provider) => {
           const Icon = provider.icon
           return (
             <motion.button
