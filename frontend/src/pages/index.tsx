@@ -4,8 +4,11 @@ import { motion } from 'framer-motion'
 import { Upload, Search, Share2, Shield, Zap, Globe } from 'lucide-react'
 import Layout from '@/components/Layout'
 import SchematicGrid from '@/components/SchematicGrid'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Home() {
+  const { isAuthenticated, loading } = useAuth()
+
   return (
     <Layout>
       <Head>
@@ -40,10 +43,21 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="flex gap-4 justify-center"
           >
-            <Link href="/upload" className="btn-primary text-lg px-8 py-3">
-              <Upload className="inline mr-2" size={20} />
-              Upload Schematic
-            </Link>
+            {!loading && (
+              <>
+                {isAuthenticated ? (
+                  <Link href="/upload" className="btn-primary text-lg px-8 py-3">
+                    <Upload className="inline mr-2" size={20} />
+                    Upload Schematic
+                  </Link>
+                ) : (
+                  <Link href="/login?returnUrl=/upload" className="btn-primary text-lg px-8 py-3">
+                    <Upload className="inline mr-2" size={20} />
+                    Login to Upload
+                  </Link>
+                )}
+              </>
+            )}
             <Link href="/browse" className="btn-secondary text-lg px-8 py-3">
               <Search className="inline mr-2" size={20} />
               Browse Library

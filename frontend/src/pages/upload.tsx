@@ -1,17 +1,19 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { motion } from 'framer-motion'
 import { Upload as UploadIcon, File, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
-import axios from 'axios'
 import Layout from '@/components/Layout'
 import ImageUpload from '@/components/ImageUpload'
+import { useAuth } from '@/contexts/AuthContext'
+import apiClient from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function Upload() {
   const router = useRouter()
+  const { isAuthenticated, loading } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [images, setImages] = useState<File[]>([])
   const [title, setTitle] = useState('')
@@ -24,6 +26,13 @@ export default function Upload() {
   const [uploadStage, setUploadStage] = useState<'schematic' | 'images'>('schematic')
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/login?returnUrl=/upload')
+    }
+  }, [isAuthenticated, loading, router])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -79,8 +88,8 @@ export default function Upload() {
         formData.append('tag_names', JSON.stringify(tagList))
       }
 
-      const response = await axios.post(
-        `${API_URL}/api/schematics/`,
+      const response = await apiClient.post(
+        '/api/schematics/',
         formData,
         {
           headers: {
@@ -108,8 +117,8 @@ export default function Upload() {
             imageFormData.append('image', images[i])
             imageFormData.append('order', String(i))
 
-            await axios.post(
-              `${API_URL}/api/schematics/${schematicId}/upload_image/`,
+            await apiClient.post(
+              `/api/schematics/${schematicId}/upload_image/`,
               imageFormData,
               {
                 headers: {
@@ -173,6 +182,20 @@ export default function Upload() {
     { value: 'farm', label: 'Farm' },
     { value: 'other', label: 'Other' },
   ]
+
+  // Show loading while checking authentication
+  if (loading || !isAuthenticated) {
+    return (
+      <Layout>
+        <Head>
+          <title>Upload Schematic - SchematicShop</title>
+        </Head>
+        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+          <p className="text-secondary-600">Loading...</p>
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout>
