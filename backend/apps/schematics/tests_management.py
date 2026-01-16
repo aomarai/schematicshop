@@ -89,7 +89,7 @@ class TestClearTestSchematicsCommand:
             description='A real schematic',
             file='real.schematic',
             file_size=1024,
-            file_hash='realhahs123'
+            file_hash='realhash123'
         )
         
         # Load and clear test data
