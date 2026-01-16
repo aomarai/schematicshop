@@ -28,6 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load user from localStorage on mount
   useEffect(() => {
     const loadUser = async () => {
+      // Check if we're in the browser (not SSR)
+      if (typeof window === 'undefined') {
+        setLoading(false)
+        return
+      }
+
       const token = localStorage.getItem('access_token')
       if (token) {
         try {
@@ -56,8 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     const { access, refresh } = response.data
-    localStorage.setItem('access_token', access)
-    localStorage.setItem('refresh_token', refresh)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', access)
+      localStorage.setItem('refresh_token', refresh)
+    }
 
     // Fetch user data
     const userResponse = await axios.get(`${API_URL}/api/auth/me/`, {
@@ -80,8 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    }
     setUser(null)
   }
 
