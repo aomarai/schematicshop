@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     
     # Third party apps
     'rest_framework',
@@ -40,6 +41,16 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_ratelimit',
     'storages',
+    
+    # Auth apps
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.discord',
+    'allauth.socialaccount.providers.github',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
     
     # Local apps
     'apps.users',
@@ -212,6 +223,57 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# Django Sites Framework (required by allauth)
+SITE_ID = 1
+
+# Django Allauth Configuration
+AUTHENTICATION_BACKENDS = [
+    # Needed to login by username in Django admin, regardless of `allauth`
+    'django.contrib.auth.backends.ModelBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_USERNAME_REQUIRED = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Social Account Providers Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': env('GOOGLE_CLIENT_ID', default=''),
+            'secret': env('GOOGLE_CLIENT_SECRET', default=''),
+        }
+    },
+    'discord': {
+        'APP': {
+            'client_id': env('DISCORD_CLIENT_ID', default=''),
+            'secret': env('DISCORD_CLIENT_SECRET', default=''),
+        }
+    },
+    'github': {
+        'APP': {
+            'client_id': env('GITHUB_CLIENT_ID', default=''),
+            'secret': env('GITHUB_CLIENT_SECRET', default=''),
+        }
+    }
+}
+
+# Authentik OIDC Configuration (if using Authentik as main provider)
+AUTHENTIK_URL = env('AUTHENTIK_URL', default='http://localhost:9002')
+AUTHENTIK_TOKEN = env('AUTHENTIK_TOKEN', default='')
 
 # Security Settings
 if not DEBUG:

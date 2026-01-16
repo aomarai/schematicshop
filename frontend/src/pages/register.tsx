@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { motion } from 'framer-motion'
 import { UserPlus, AlertCircle } from 'lucide-react'
 import Layout from '@/components/Layout'
+import SocialLoginButtons from '@/components/SocialLoginButtons'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Register() {
@@ -177,6 +178,10 @@ export default function Register() {
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </button>
             </form>
+
+            <div className="mt-6">
+              <SocialLoginButtons mode="register" />
+            </div>
 
             <div className="mt-6 text-center">
               <p className="text-secondary-600">

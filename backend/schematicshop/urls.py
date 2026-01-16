@@ -34,6 +34,11 @@ urlpatterns = [
     # API endpoints
     path('api/auth/', include('apps.users.urls')),
     path('api/schematics/', include('apps.schematics.urls')),
+    
+    # Social authentication (allauth)
+    path('accounts/', include('allauth.urls')),
+    path('api/auth/social/', include('dj_rest_auth.urls')),
+    path('api/auth/social/registration/', include('dj_rest_auth.registration.urls')),
 ]
 
 if settings.DEBUG:

@@ -58,6 +58,73 @@ services:
       timeout: 10s
       retries: 3
 
+  authentik-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentikpassword
+    volumes:
+      - authentik_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authentik-redis:
+    image: redis:7-alpine
+    volumes:
+      - authentik_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.2
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentikpassword
+      AUTHENTIK_SECRET_KEY: "change-this-secret-key-in-production-please"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      # OIDC/OAuth settings
+      AUTHENTIK_BOOTSTRAP_PASSWORD: "admin"
+      AUTHENTIK_BOOTSTRAP_TOKEN: "bootstrap-token"
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    ports:
+      - "9002:9000"
+      - "9443:9443"
+    depends_on:
+      - authentik-postgres
+      - authentik-redis
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.2
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentikpassword
+      AUTHENTIK_SECRET_KEY: "change-this-secret-key-in-production-please"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - authentik-postgres
+      - authentik-redis
+
   backend:
     build:
       context: .
@@ -77,11 +144,14 @@ services:
       - AWS_S3_ENDPOINT_URL=http://minio:9000
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
+      - AUTHENTIK_URL=http://authentik-server:9000
+      - AUTHENTIK_TOKEN=bootstrap-token
     depends_on:
       - postgres
       - redis
       - minio
       - clamav
+      - authentik-server
 
   celery:
     build:
@@ -128,3 +198,7 @@ volumes:
   redis_data:
   minio_data:
   clamav_data:
+  authentik_postgres_data:
+  authentik_redis_data:
+  authentik_media:
+  authentik_templates:
