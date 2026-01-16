@@ -109,6 +109,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    # Run Next.js in development mode and bind to 0.0.0.0 so it's reachable from the host
+    command: sh -c "npm run dev -- -H 0.0.0.0"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -116,6 +118,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - HOST=0.0.0.0
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
