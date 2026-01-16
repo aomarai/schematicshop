@@ -6,12 +6,14 @@ import { Upload as UploadIcon, File, X, CheckCircle, AlertCircle } from 'lucide-
 import { useDropzone } from 'react-dropzone'
 import axios from 'axios'
 import Layout from '@/components/Layout'
+import ImageUpload from '@/components/ImageUpload'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function Upload() {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
+  const [images, setImages] = useState<File[]>([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('building')
@@ -91,9 +93,38 @@ export default function Upload() {
         }
       )
 
+      const schematicId = response.data.id
+
+      // Upload images if any
+      if (images.length > 0) {
+        setUploadProgress(0)
+        for (let i = 0; i < images.length; i++) {
+          const imageFormData = new FormData()
+          imageFormData.append('image', images[i])
+          imageFormData.append('order', String(i))
+
+          await axios.post(
+            `${API_URL}/api/schematics/${schematicId}/upload_image/`,
+            imageFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+              onUploadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                  const imageProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                  const totalProgress = Math.round(((i + imageProgress / 100) / images.length) * 100)
+                  setUploadProgress(totalProgress)
+                }
+              },
+            }
+          )
+        }
+      }
+
       setUploadSuccess(true)
       setTimeout(() => {
-        router.push(`/schematic/${response.data.id}`)
+        router.push(`/schematic/${schematicId}`)
       }, 2000)
     } catch (error: any) {
       console.error('Upload error:', error)
@@ -276,6 +307,14 @@ export default function Upload() {
                 Separate tags with commas
               </p>
             </div>
+          </div>
+
+          {/* Build Images */}
+          <div className="card p-6">
+            <ImageUpload 
+              onImagesChange={setImages}
+              maxImages={10}
+            />
           </div>
 
           {/* Visibility */}
