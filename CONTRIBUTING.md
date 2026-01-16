@@ -1,17 +1,16 @@
 # Contributing to SchematicShop
 
-Thank you for your interest in contributing to SchematicShop! This document provides guidelines and instructions for contributing.
+**Private Repository** - Internal development guidelines for team members.
 
 ## Getting Started
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/schematicshop.git`
-3. Create a branch: `git checkout -b feature/your-feature-name`
-4. Make your changes
-5. Test your changes
-6. Commit: `git commit -m "Add your feature"`
-7. Push: `git push origin feature/your-feature-name`
-8. Open a Pull Request
+1. Clone the repository (requires access): `git clone https://github.com/aomarai/schematicshop.git`
+2. Create a branch: `git checkout -b feature/your-feature-name`
+3. Make your changes
+4. Test your changes thoroughly
+5. Commit: `git commit -m "Add your feature"`
+6. Push: `git push origin feature/your-feature-name`
+7. Open a Pull Request for review
 
 ## Development Setup
 

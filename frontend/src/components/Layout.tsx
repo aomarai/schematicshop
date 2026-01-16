@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import Link from 'next/link'
-import { Upload, Search, User, Menu } from 'lucide-react'
+import { Upload, Search, User } from 'lucide-react'
 
 interface LayoutProps {
   children: ReactNode

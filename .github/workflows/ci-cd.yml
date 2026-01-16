@@ -13,7 +13,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: test_db
           POSTGRES_USER: test_user
@@ -62,7 +62,7 @@ jobs:
         SECRET_KEY: test-secret-key
         DEBUG: 1
         USE_S3: 0
-        CLAMAV_ENABLED: 0
+        CLAMAV_HOST: localhost
       run: |
         cd backend
         python manage.py migrate

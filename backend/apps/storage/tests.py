@@ -2,7 +2,7 @@
 Unit tests for storage app
 """
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from apps.storage.backends import SchematicStorage
 
 

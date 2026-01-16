@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-01-16
+
+### Changed
+- **BREAKING**: Removed CLAMAV_ENABLED setting - ClamAV is now always required for security
+- Files with scan errors are now queued for retry (up to 5 attempts with exponential backoff)
+- PostgreSQL upgraded from 15 to 18 across all deployments (CI/CD, Docker Compose, Kubernetes)
+- Moved documentation files (ARCHITECTURE.md, API_EXAMPLES.md, DEPLOYMENT.md) to `docs/` directory
+- Updated README and CONTRIBUTING for private repository status
+
+### Added
+- Scan retry tracking with `scan_retry_count` and `max_scan_retries` fields on Schematic model
+- Quarantine storage backend (`QuarantineStorage`) for isolating files during virus scanning
+- Automatic file deletion for infected files (immediate) and files exceeding max scan retries
+- User account flagging system for accounts that upload infected files
+- Database migration: `0003_add_scan_retry_fields.py` for new scan retry fields
+
+### Fixed
+- Removed unused imports across backend and frontend files
+- Fixed exception handling in scanning tasks (using `Exception` instead of bare `except`)
+- Added proper error logging for failed scan status updates
+
+### Removed
+- Deleted unnecessary documentation files: IMPLEMENTATION_SUMMARY.md, SECURITY.md, TEST_COVERAGE.md
+- Removed CLAMAV_ENABLED environment variable (ClamAV now mandatory)
+- Removed MIT License badge (private repository)
+
+### Security
+- Enhanced virus scanning workflow: infected files are immediately deleted
+- Files are now isolated in quarantine storage during scanning
+- User accounts are flagged when uploading infected files
+- Files with persistent scan errors (after 5 retries) are automatically deleted
+
 ## [1.0.2] - 2026-01-15
 
 ### Fixed

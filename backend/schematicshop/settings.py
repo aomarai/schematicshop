@@ -196,8 +196,7 @@ if USE_S3:
     # Use S3 for media files
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-# ClamAV Settings
-CLAMAV_ENABLED = env.bool('CLAMAV_ENABLED', default=False)
+# ClamAV Settings (Always required for security)
 CLAMAV_HOST = env('CLAMAV_HOST', default='localhost')
 CLAMAV_PORT = env.int('CLAMAV_PORT', default=3310)
 

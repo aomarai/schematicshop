@@ -1,8 +1,7 @@
 # SchematicShop
 
-A cloud-native, highly scalable web application for hosting Minecraft schematic and litematica files. Built with modern microservices architecture, featuring automatic virus scanning, file validation, 3D preview capabilities, and a sleek, stylized UI.
+**Private Repository** - A cloud-native, highly scalable web application for hosting Minecraft schematic and litematica files. Built with modern microservices architecture, featuring automatic virus scanning, file validation, and a sleek, stylized UI.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
 ![Django](https://img.shields.io/badge/django-4.2-green.svg)
 ![Next.js](https://img.shields.io/badge/next.js-14.0-black.svg)

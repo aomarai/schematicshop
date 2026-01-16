@@ -2,15 +2,14 @@
 Schematic views
 """
 from rest_framework import viewsets, status, filters, permissions
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.utils import timezone
 import hashlib
 
-from .models import Schematic, Tag, SchematicComment, SchematicLike
+from .models import Schematic, Tag, SchematicLike
 from .serializers import (
     SchematicListSerializer, SchematicDetailSerializer,
     SchematicUploadSerializer, TagSerializer, CommentSerializer

@@ -4,20 +4,40 @@ Celery tasks for virus scanning
 from celery import shared_task
 from django.utils import timezone
 from django.apps import apps
+from django.core.files.storage import default_storage
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def scan_file_task(schematic_id):
+@shared_task(bind=True, max_retries=5)
+def scan_file_task(self, schematic_id):
     """
     Asynchronous task to scan uploaded files for viruses
+    Implements retry logic and automatic file deletion for infected/error files
     """
     Schematic = apps.get_model('schematics', 'Schematic')
+    User = apps.get_model('users', 'User')
     
     try:
         schematic = Schematic.objects.get(id=schematic_id)
+        
+        # Check if max retries exceeded
+        if schematic.scan_retry_count >= schematic.max_scan_retries:
+            logger.error(f"Max retries exceeded for schematic {schematic_id}, deleting file")
+            # Delete the file from storage
+            if schematic.file:
+                try:
+                    schematic.file.delete(save=False)
+                    logger.info(f"Deleted file for schematic {schematic_id} after max retries")
+                except Exception as delete_error:
+                    logger.error(f"Error deleting file for {schematic_id}: {delete_error}")
+            
+            schematic.scan_status = 'error'
+            schematic.scan_result = {'error': 'Max scan retries exceeded, file deleted'}
+            schematic.save(update_fields=['scan_status', 'scan_result'])
+            return {'status': 'error', 'reason': 'max_retries_exceeded'}
         
         # Update status to scanning
         schematic.scan_status = 'scanning'
@@ -31,21 +51,64 @@ def scan_file_task(schematic_id):
         file_path = schematic.file.path
         scan_result = scanner.scan_file(file_path)
         
-        # Update schematic with scan result
+        # Handle scan results
         if scan_result['is_infected']:
+            # INFECTED FILE: Delete immediately and flag account
             schematic.scan_status = 'infected'
-            # In production, you might want to quarantine/delete the file
-            logger.warning(f"Infected file detected: {schematic_id}")
+            schematic.scan_result = scan_result
+            schematic.scanned_at = timezone.now()
+            schematic.save(update_fields=['scan_status', 'scan_result', 'scanned_at'])
+            
+            logger.warning(f"Infected file detected: {schematic_id}, deleting file and flagging user")
+            
+            # Delete the infected file
+            if schematic.file:
+                try:
+                    schematic.file.delete(save=False)
+                    logger.info(f"Deleted infected file for schematic {schematic_id}")
+                except Exception as delete_error:
+                    logger.error(f"Error deleting infected file for {schematic_id}: {delete_error}")
+            
+            # Flag the user account
+            try:
+                user = schematic.owner
+                # Increment infected file count (you may want to add this field to User model)
+                if hasattr(user, 'infected_upload_count'):
+                    user.infected_upload_count += 1
+                    user.save(update_fields=['infected_upload_count'])
+                logger.warning(f"Flagged user {user.username} for uploading infected file")
+            except Exception as flag_error:
+                logger.error(f"Error flagging user for {schematic_id}: {flag_error}")
+            
+            return scan_result
+            
         elif scan_result['status'] == 'error':
-            schematic.scan_status = 'error'
+            # ERROR DURING SCAN: Increment retry count and requeue
+            schematic.scan_retry_count += 1
+            schematic.scan_status = 'pending'  # Reset to pending for retry
+            schematic.scan_result = scan_result
+            schematic.save(update_fields=['scan_retry_count', 'scan_status', 'scan_result'])
+            
+            logger.warning(
+                f"Scan error for {schematic_id}, retry {schematic.scan_retry_count}/"
+                f"{schematic.max_scan_retries}"
+            )
+            
+            # Retry with exponential backoff
+            countdown = 2 ** schematic.scan_retry_count * 60  # 2, 4, 8, 16, 32 minutes
+            raise self.retry(exc=Exception(scan_result.get('error')), countdown=countdown)
+            
         else:
+            # CLEAN FILE: Move from quarantine to normal storage and mark as clean
             schematic.scan_status = 'clean'
+            schematic.scan_result = scan_result
+            schematic.scanned_at = timezone.now()
+            schematic.save(update_fields=['scan_status', 'scan_result', 'scanned_at'])
+            
+            # Note: File movement from quarantine to normal storage would be handled here
+            # if using separate storage backends for quarantine and production
+            logger.info(f"File {schematic_id} marked as clean")
         
-        schematic.scan_result = scan_result
-        schematic.scanned_at = timezone.now()
-        schematic.save(update_fields=['scan_status', 'scan_result', 'scanned_at'])
-        
-        logger.info(f"Scan completed for {schematic_id}: {scan_result['status']}")
         return scan_result
         
     except Schematic.DoesNotExist:
@@ -55,9 +118,32 @@ def scan_file_task(schematic_id):
         logger.error(f"Error scanning file {schematic_id}: {str(e)}")
         try:
             schematic = Schematic.objects.get(id=schematic_id)
-            schematic.scan_status = 'error'
-            schematic.scan_result = {'error': str(e)}
-            schematic.save(update_fields=['scan_status', 'scan_result'])
-        except:
-            pass
+            schematic.scan_retry_count += 1
+            
+            # Check if we should delete due to max retries
+            if schematic.scan_retry_count >= schematic.max_scan_retries:
+                logger.error(f"Max retries exceeded for {schematic_id}, deleting file")
+                if schematic.file:
+                    try:
+                        schematic.file.delete(save=False)
+                        logger.info(f"Deleted file for schematic {schematic_id} after max retries")
+                    except Exception as delete_error:
+                        logger.error(f"Error deleting file for {schematic_id}: {delete_error}")
+                
+                schematic.scan_status = 'error'
+                schematic.scan_result = {'error': 'Max scan retries exceeded, file deleted'}
+                schematic.save(update_fields=['scan_status', 'scan_result', 'scan_retry_count'])
+            else:
+                # Retry
+                schematic.scan_status = 'pending'
+                schematic.scan_result = {'error': str(e)}
+                schematic.save(update_fields=['scan_status', 'scan_result', 'scan_retry_count'])
+                
+                countdown = 2 ** schematic.scan_retry_count * 60
+                raise self.retry(exc=e, countdown=countdown)
+                
+        except Exception as inner_exc:
+            logger.error(
+                f"Failed to update scan error status for schematic {schematic_id}: {inner_exc}"
+            )
         return None

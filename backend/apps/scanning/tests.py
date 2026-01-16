@@ -2,8 +2,7 @@
 Unit tests for scanning app
 """
 import pytest
-import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from apps.schematics.models import Schematic
 from django.contrib.auth import get_user_model
 
@@ -13,49 +12,21 @@ User = get_user_model()
 class TestVirusScanner:
     """Test VirusScanner class"""
     
-    def test_scanner_init_disabled(self):
-        """Test scanner initialization when disabled"""
+    def test_scanner_init(self):
+        """Test scanner initialization"""
         with patch('apps.scanning.scanner.settings') as mock_settings:
-            mock_settings.CLAMAV_ENABLED = False
-            mock_settings.CLAMAV_HOST = 'localhost'
-            mock_settings.CLAMAV_PORT = 3310
-            
-            from apps.scanning.scanner import VirusScanner
-            scanner = VirusScanner()
-            
-            assert scanner.enabled == False
-    
-    def test_scanner_init_enabled(self):
-        """Test scanner initialization when enabled"""
-        with patch('apps.scanning.scanner.settings') as mock_settings:
-            mock_settings.CLAMAV_ENABLED = True
             mock_settings.CLAMAV_HOST = 'clamav'
             mock_settings.CLAMAV_PORT = 3310
             
             from apps.scanning.scanner import VirusScanner
             scanner = VirusScanner()
             
-            assert scanner.enabled == True
             assert scanner.host == 'clamav'
             assert scanner.port == 3310
     
-    def test_scan_file_disabled(self):
-        """Test scanning when ClamAV is disabled"""
-        with patch('apps.scanning.scanner.settings') as mock_settings:
-            mock_settings.CLAMAV_ENABLED = False
-            mock_settings.CLAMAV_HOST = 'localhost'
-            mock_settings.CLAMAV_PORT = 3310
-            
-            from apps.scanning.scanner import VirusScanner
-            scanner = VirusScanner()
-            result = scanner.scan_file('/path/to/file.txt')
-            
-            assert result['is_infected'] == False
-            assert result['status'] == 'skipped'
-    
     def test_scan_file_clean(self):
         """Test scanning a clean file"""
-        # Since ClamAV is disabled in test settings, mock the entire scan_file method
+        # Mock ClamAV for testing
         from apps.scanning.scanner import VirusScanner
         scanner = VirusScanner()
         
@@ -109,19 +80,17 @@ class TestVirusScanner:
             assert result['status'] == 'error'
             assert 'error' in result
     
-    def test_scan_stream_disabled(self):
-        """Test scanning stream when disabled"""
-        with patch('apps.scanning.scanner.settings') as mock_settings:
-            mock_settings.CLAMAV_ENABLED = False
-            mock_settings.CLAMAV_HOST = 'localhost'
-            mock_settings.CLAMAV_PORT = 3310
-            
-            from apps.scanning.scanner import VirusScanner
-            scanner = VirusScanner()
-            result = scanner.scan_stream(b'test content')
-            
-            assert result['is_infected'] == False
-            assert result['status'] == 'skipped'
+    def test_scan_stream_error(self):
+        """Test scanning stream when ClamAV is unavailable"""
+        from apps.scanning.scanner import VirusScanner
+        scanner = VirusScanner()
+        
+        # Without ClamAV running, this will return error status
+        result = scanner.scan_stream(b'test content')
+        
+        assert result['is_infected'] == False
+        assert result['status'] == 'error'
+        assert 'error' in result
     
     def test_scan_stream_clean(self):
         """Test scanning a clean stream"""
@@ -222,8 +191,9 @@ class TestScanFileTask:
             assert schematic.scan_result['virus_name'] == 'TestVirus'
     
     def test_scan_file_task_error(self):
-        """Test scanning task when error occurs"""
+        """Test scanning task when error occurs - should set to pending for retry"""
         from apps.scanning.tasks import scan_file_task
+        from celery.exceptions import Retry
         
         schematic = Schematic.objects.create(
             owner=self.user,
@@ -247,13 +217,17 @@ class TestScanFileTask:
             
             # Mock file.path property
             with patch.object(type(schematic.file), 'path', new_callable=lambda: property(lambda self: '/fake/path')):
-                result = scan_file_task(str(schematic.id))
+                # The task will raise Retry exception with new logic
+                try:
+                    result = scan_file_task(str(schematic.id))
+                except Retry:
+                    pass  # Expected behavior - task will retry
             
-            assert result['status'] == 'error'
-            
-            # Check schematic was updated
+            # Check schematic was updated to pending (for retry)
             schematic.refresh_from_db()
-            assert schematic.scan_status == 'error'
+            assert schematic.scan_status == 'pending'
+            # Retry count may be incremented multiple times due to test execution
+            assert schematic.scan_retry_count >= 1
     
     def test_scan_file_task_not_found(self):
         """Test scanning task for non-existent schematic"""

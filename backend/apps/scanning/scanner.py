@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 class VirusScanner:
     """
     Wrapper for ClamAV virus scanner
+    ClamAV is always required for security. Files are queued if ClamAV is unavailable.
     """
     
     def __init__(self):
-        self.enabled = settings.CLAMAV_ENABLED
         self.host = settings.CLAMAV_HOST
         self.port = settings.CLAMAV_PORT
     
@@ -28,14 +28,6 @@ class VirusScanner:
                 'status': str
             }
         """
-        if not self.enabled:
-            logger.info(f"ClamAV disabled, skipping scan for {file_path}")
-            return {
-                'is_infected': False,
-                'virus_name': None,
-                'status': 'skipped'
-            }
-        
         try:
             import clamd
             cd = clamd.ClamdNetworkSocket(self.host, self.port)
@@ -67,6 +59,7 @@ class VirusScanner:
             
         except Exception as e:
             logger.error(f"Error scanning file {file_path}: {str(e)}")
+            # ClamAV unavailable or error - file should be queued for retry
             return {
                 'is_infected': False,
                 'virus_name': None,
@@ -78,13 +71,6 @@ class VirusScanner:
         """
         Scan a file stream for viruses
         """
-        if not self.enabled:
-            return {
-                'is_infected': False,
-                'virus_name': None,
-                'status': 'skipped'
-            }
-        
         try:
             import clamd
             cd = clamd.ClamdNetworkSocket(self.host, self.port)

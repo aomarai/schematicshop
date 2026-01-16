@@ -69,6 +69,8 @@ class Schematic(models.Model):
     )
     scan_result = models.JSONField(null=True, blank=True)
     scanned_at = models.DateTimeField(null=True, blank=True)
+    scan_retry_count = models.IntegerField(default=0)
+    max_scan_retries = models.IntegerField(default=5)
     
     # Statistics
     download_count = models.IntegerField(default=0)
