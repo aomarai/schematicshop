@@ -3,6 +3,8 @@ Schematic serializers
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from PIL import Image
+import io
 from .models import Schematic, Tag, SchematicComment, SchematicLike, SchematicImage
 
 User = get_user_model()
@@ -38,9 +40,6 @@ class SchematicImageSerializer(serializers.ModelSerializer):
         return None
     
     def validate_image(self, value):
-        from PIL import Image
-        import io
-        
         # File size validation (max 5MB for images)
         max_size = 5 * 1024 * 1024
         if value.size > max_size:
@@ -56,8 +55,9 @@ class SchematicImageSerializer(serializers.ModelSerializer):
             # Reset file pointer after verification
             value.seek(0)
             
-            # Validate format is in allowed list
-            if image.format.lower() not in ['jpeg', 'png', 'webp']:
+            # Validate format is in allowed list (PIL uses 'JPEG' not 'JPG')
+            allowed_formats = ['jpeg', 'png', 'webp']
+            if image.format and image.format.lower() not in allowed_formats:
                 raise serializers.ValidationError(
                     "Image format must be JPEG, PNG, or WebP"
                 )
