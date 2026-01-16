@@ -2,7 +2,7 @@
 Schematic admin
 """
 from django.contrib import admin
-from .models import Schematic, Tag, SchematicComment, SchematicLike
+from .models import Schematic, Tag, SchematicComment, SchematicLike, SchematicImage
 
 
 @admin.register(Tag)
@@ -10,6 +10,12 @@ class TagAdmin(admin.ModelAdmin):
     list_display = ['name', 'slug', 'created_at']
     search_fields = ['name']
     prepopulated_fields = {'slug': ('name',)}
+
+
+class SchematicImageInline(admin.TabularInline):
+    model = SchematicImage
+    extra = 1
+    fields = ['image', 'caption', 'order']
 
 
 @admin.register(Schematic)
@@ -22,6 +28,7 @@ class SchematicAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description', 'owner__username']
     readonly_fields = ['id', 'file_hash', 'download_count', 'view_count', 'created_at', 'updated_at']
     filter_horizontal = ['tags']
+    inlines = [SchematicImageInline]
 
 
 @admin.register(SchematicComment)
@@ -35,3 +42,10 @@ class SchematicCommentAdmin(admin.ModelAdmin):
 class SchematicLikeAdmin(admin.ModelAdmin):
     list_display = ['user', 'schematic', 'created_at']
     list_filter = ['created_at']
+
+
+@admin.register(SchematicImage)
+class SchematicImageAdmin(admin.ModelAdmin):
+    list_display = ['schematic', 'order', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['schematic__title', 'caption']

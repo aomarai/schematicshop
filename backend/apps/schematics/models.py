@@ -148,3 +148,25 @@ class SchematicLike(models.Model):
 
     def __str__(self):
         return f"{self.user.username} likes {self.schematic.title}"
+
+
+class SchematicImage(models.Model):
+    """Images/screenshots for schematics"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    schematic = models.ForeignKey(Schematic, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(
+        upload_to='schematic_images/%Y/%m/%d/',
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    caption = models.CharField(max_length=255, blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['schematic', 'order']),
+        ]
+
+    def __str__(self):
+        return f"Image for {self.schematic.title}"

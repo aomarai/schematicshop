@@ -3,10 +3,11 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Download, Heart, Eye, Calendar, User, Tag, FileText, Share2, AlertTriangle, X } from 'lucide-react'
+import { Download, Heart, Eye, Calendar, User, Tag, FileText, Share2, AlertTriangle, X, ImageIcon } from 'lucide-react'
 import { useQuery } from 'react-query'
 import axios from 'axios'
 import Layout from '@/components/Layout'
+import ImageGallery from '@/components/ImageGallery'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -92,7 +93,13 @@ export default function SchematicDetail() {
               className="card overflow-hidden mb-6"
             >
               <div className="relative h-96 bg-gradient-to-br from-primary-100 to-secondary-100">
-                {schematic.thumbnail_url ? (
+                {schematic.images && schematic.images.length > 0 ? (
+                  <img 
+                    src={schematic.images[0].image_url} 
+                    alt={schematic.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : schematic.thumbnail_url ? (
                   <img 
                     src={schematic.thumbnail_url} 
                     alt={schematic.title}
@@ -120,11 +127,27 @@ export default function SchematicDetail() {
               </div>
             </motion.div>
 
+            {/* Image Gallery */}
+            {schematic.images && schematic.images.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="card p-6 mb-6"
+              >
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <ImageIcon size={20} />
+                  Build Images ({schematic.images.length})
+                </h3>
+                <ImageGallery images={schematic.images} schematicTitle={schematic.title} />
+              </motion.div>
+            )}
+
             {/* Title and Description */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: schematic.images && schematic.images.length > 0 ? 0.2 : 0.1 }}
               className="card p-6 mb-6"
             >
               <h1 className="text-4xl font-bold mb-4">{schematic.title}</h1>
@@ -158,7 +181,7 @@ export default function SchematicDetail() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: schematic.images && schematic.images.length > 0 ? 0.3 : 0.2 }}
                 className="card p-6 mb-6"
               >
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">

@@ -3,7 +3,9 @@ Schematic serializers
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Schematic, Tag, SchematicComment, SchematicLike
+from PIL import Image
+import io
+from .models import Schematic, Tag, SchematicComment, SchematicLike, SchematicImage
 
 User = get_user_model()
 
@@ -20,12 +22,61 @@ class SchematicOwnerSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'avatar']
 
 
+class SchematicImageSerializer(serializers.ModelSerializer):
+    """Serializer for schematic images"""
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SchematicImage
+        fields = ['id', 'image', 'image_url', 'caption', 'order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+    
+    def validate_image(self, value):
+        # File size validation (max 5MB for images)
+        max_size = 5 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(
+                "Image size must not exceed 5MB"
+            )
+        
+        # Content-based validation - verify it's actually an image
+        try:
+            image = Image.open(value)
+            image.verify()
+            
+            # Reset file pointer after verification
+            value.seek(0)
+            
+            # Validate format is in allowed list (PIL uses 'JPEG' not 'JPG')
+            allowed_formats = ['jpeg', 'png', 'webp']
+            if image.format and image.format.lower() not in allowed_formats:
+                raise serializers.ValidationError(
+                    "Image format must be JPEG, PNG, or WebP"
+                )
+        except Exception as e:
+            raise serializers.ValidationError(
+                f"Invalid image file: {str(e)}"
+            )
+        
+        return value
+
+
 class SchematicListSerializer(serializers.ModelSerializer):
     """Serializer for listing schematics"""
     owner = SchematicOwnerSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     likes_count = serializers.IntegerField(source='likes.count', read_only=True)
     is_liked = serializers.SerializerMethodField()
+    first_image = serializers.SerializerMethodField()
+    images_count = serializers.IntegerField(source='images.count', read_only=True)
 
     class Meta:
         model = Schematic
@@ -34,7 +85,7 @@ class SchematicListSerializer(serializers.ModelSerializer):
             'minecraft_version', 'width', 'height', 'length',
             'tags', 'category', 'is_public', 'scan_status',
             'download_count', 'view_count', 'thumbnail_url',
-            'likes_count', 'is_liked', 'created_at', 'updated_at'
+            'likes_count', 'is_liked', 'first_image', 'images_count', 'created_at', 'updated_at'
         ]
 
     def get_is_liked(self, obj):
@@ -42,6 +93,12 @@ class SchematicListSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return SchematicLike.objects.filter(user=request.user, schematic=obj).exists()
         return False
+    
+    def get_first_image(self, obj):
+        first_image = obj.images.first()
+        if first_image:
+            return SchematicImageSerializer(first_image, context=self.context).data
+        return None
 
 
 class SchematicDetailSerializer(serializers.ModelSerializer):
@@ -56,6 +113,7 @@ class SchematicDetailSerializer(serializers.ModelSerializer):
     likes_count = serializers.IntegerField(source='likes.count', read_only=True)
     is_liked = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(source='comments.count', read_only=True)
+    images = SchematicImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Schematic
@@ -65,7 +123,7 @@ class SchematicDetailSerializer(serializers.ModelSerializer):
             'tags', 'tag_names', 'category', 'is_public', 'scan_status',
             'scan_result', 'scanned_at', 'download_count', 'view_count',
             'thumbnail_url', 'preview_data', 'likes_count', 'is_liked',
-            'comments_count', 'created_at', 'updated_at'
+            'comments_count', 'images', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'owner', 'file_size', 'file_hash', 'scan_status',
