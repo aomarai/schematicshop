@@ -23,7 +23,10 @@ class UserSerializer(serializers.ModelSerializer):
             'storage_available', 'storage_percentage', 'created_at',
             'is_banned', 'ban_expires_at', 'ban_reason'
         ]
-        read_only_fields = ['id', 'storage_used', 'created_at', 'is_banned', 'ban_expires_at', 'ban_reason']
+        read_only_fields = [
+            'id', 'storage_used', 'created_at', 
+            'is_banned', 'ban_expires_at', 'ban_reason'
+        ]
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -71,19 +74,24 @@ class BanSerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         """Validate ban data"""
-        if attrs.get('ban_type') == 'temporary' and not attrs.get('expires_at'):
-            raise serializers.ValidationError({
-                'expires_at': 'Expiration date is required for temporary bans'
-            })
-        if attrs.get('ban_type') == 'temporary' and attrs.get('expires_at'):
-            if attrs['expires_at'] <= timezone.now():
+        ban_type = attrs.get('ban_type')
+        expires_at = attrs.get('expires_at')
+        
+        if ban_type == 'temporary':
+            if not expires_at:
+                raise serializers.ValidationError({
+                    'expires_at': 'Expiration date is required for temporary bans'
+                })
+            if expires_at <= timezone.now():
                 raise serializers.ValidationError({
                     'expires_at': 'Expiration date must be in the future'
                 })
-        if attrs.get('ban_type') == 'permanent' and attrs.get('expires_at'):
+        
+        if ban_type == 'permanent' and expires_at:
             raise serializers.ValidationError({
                 'expires_at': 'Permanent bans should not have an expiration date'
             })
+        
         return attrs
 
 

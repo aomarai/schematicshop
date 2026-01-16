@@ -46,8 +46,10 @@ class User(AbstractUser):
         """Check if user is currently banned"""
         if not self.is_active:
             return True
-        if self.ban_expires_at and self.ban_expires_at > timezone.now():
-            return True
+        if self.ban_expires_at:
+            # Only consider it a ban if the expiration is in the future
+            if self.ban_expires_at > timezone.now():
+                return True
         return False
     
     def unban(self):
