@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     
     # Third party apps
     'rest_framework',
@@ -40,6 +41,16 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_ratelimit',
     'storages',
+    
+    # Auth apps
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.discord',
+    'allauth.socialaccount.providers.github',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
     
     # Local apps
     'apps.users',
@@ -190,6 +201,8 @@ if USE_S3:
     AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL', default=None)
     AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='us-east-1')
     AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN', default=None)
+    AWS_S3_URL_PROTOCOL = env('AWS_S3_URL_PROTOCOL', default='https:')
+    AWS_S3_USE_SSL = env.bool('AWS_S3_USE_SSL', default=True)
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = 'public-read'
     AWS_QUERYSTRING_AUTH = False
@@ -212,6 +225,67 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# Django Sites Framework (required by allauth)
+SITE_ID = 1
+
+# Django Allauth Configuration
+AUTHENTICATION_BACKENDS = [
+    # Needed to login by username in Django admin, regardless of `allauth`
+    'django.contrib.auth.backends.ModelBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_USERNAME_REQUIRED = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Social Account Providers Configuration
+# Note: Providers will only be active if credentials are provided
+SOCIALACCOUNT_PROVIDERS = {}
+
+# Google OAuth
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default=None)
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default=None)
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['google'] = {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': GOOGLE_CLIENT_SECRET,
+        }
+    }
+
+# Discord OAuth
+DISCORD_CLIENT_ID = env('DISCORD_CLIENT_ID', default=None)
+DISCORD_CLIENT_SECRET = env('DISCORD_CLIENT_SECRET', default=None)
+if DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['discord'] = {
+        'APP': {
+            'client_id': DISCORD_CLIENT_ID,
+            'secret': DISCORD_CLIENT_SECRET,
+        }
+    }
+
+# GitHub OAuth
+GITHUB_CLIENT_ID = env('GITHUB_CLIENT_ID', default=None)
+GITHUB_CLIENT_SECRET = env('GITHUB_CLIENT_SECRET', default=None)
+if GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['github'] = {
+        'APP': {
+            'client_id': GITHUB_CLIENT_ID,
+            'secret': GITHUB_CLIENT_SECRET,
+        }
+    }
+
+# Authentik OIDC Configuration (if using Authentik as main provider)
+AUTHENTIK_URL = env('AUTHENTIK_URL', default='http://localhost:9002')
+AUTHENTIK_TOKEN = env('AUTHENTIK_TOKEN', default='')
 
 # Security Settings
 if not DEBUG:

@@ -1,12 +1,15 @@
 import { ReactNode } from 'react'
 import Link from 'next/link'
-import { Upload, Search, User } from 'lucide-react'
+import { Upload, Search, User, LogOut, LogIn } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface LayoutProps {
   children: ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const { user, logout, isAuthenticated, loading } = useAuth()
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -36,13 +39,37 @@ export default function Layout({ children }: LayoutProps) {
               <Search size={18} />
               Search
             </Link>
-            <Link href="/upload" className="btn-primary flex items-center gap-2">
-              <Upload size={18} />
-              <span className="hidden md:inline">Upload</span>
-            </Link>
-            <button className="btn-secondary">
-              <User size={18} />
-            </button>
+            
+            {!loading && (
+              <>
+                {isAuthenticated ? (
+                  <>
+                    <Link href="/upload" className="btn-primary flex items-center gap-2">
+                      <Upload size={18} />
+                      <span className="hidden md:inline">Upload</span>
+                    </Link>
+                    <div className="flex items-center gap-2">
+                      <button className="btn-secondary flex items-center gap-2">
+                        <User size={18} />
+                        <span className="hidden md:inline">{user?.username}</span>
+                      </button>
+                      <button 
+                        onClick={logout}
+                        className="btn-secondary flex items-center gap-2"
+                        title="Logout"
+                      >
+                        <LogOut size={18} />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <Link href="/login" className="btn-primary flex items-center gap-2">
+                    <LogIn size={18} />
+                    <span className="hidden md:inline">Login</span>
+                  </Link>
+                )}
+              </>
+            )}
           </div>
         </nav>
       </header>

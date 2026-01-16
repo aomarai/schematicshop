@@ -27,6 +27,18 @@ stringData:
   REDIS_URL: "redis://redis:6379/0"
   AWS_ACCESS_KEY_ID: "your-key"
   AWS_SECRET_ACCESS_KEY: "your-secret"
+  # OAuth / Social Authentication
+  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_SECRET: ""
+  DISCORD_CLIENT_ID: ""
+  DISCORD_CLIENT_SECRET: ""
+  GITHUB_CLIENT_ID: ""
+  GITHUB_CLIENT_SECRET: ""
+  # Authentik Integration
+  AUTHENTIK_URL: "http://authentik-server:9000"
+  AUTHENTIK_TOKEN: "change-me-in-production"
+  AUTHENTIK_CLIENT_ID: ""
+  AUTHENTIK_CLIENT_SECRET: ""
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -172,11 +184,13 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
 spec:
   tls:
   - hosts:
     - schematicshop.example.com
     - api.schematicshop.example.com
+    - auth.schematicshop.example.com
     secretName: schematicshop-tls
   rules:
   - host: schematicshop.example.com
@@ -199,3 +213,13 @@ spec:
             name: backend
             port:
               number: 8000
+  - host: auth.schematicshop.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: authentik-server
+            port:
+              number: 9000
