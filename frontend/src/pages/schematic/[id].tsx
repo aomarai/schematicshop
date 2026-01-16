@@ -33,10 +33,13 @@ export default function SchematicDetail() {
       window.open(response.data.download_url, '_blank')
     } catch (error: any) {
       console.error('Download error:', error)
-      setDownloadError(
+      const errorMessage = 
         error.response?.data?.error || 
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
         'Failed to download schematic. Please try again.'
-      )
+      setDownloadError(errorMessage)
     }
   }
 
