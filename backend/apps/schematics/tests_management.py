@@ -83,7 +83,7 @@ class TestClearTestSchematicsCommand:
             email='real@example.com',
             password='realpass123'
         )
-        real_schematic = Schematic.objects.create(
+        Schematic.objects.create(
             owner=user,
             title='Real Schematic',
             description='A real schematic',
@@ -99,3 +99,6 @@ class TestClearTestSchematicsCommand:
         # Real data should still exist
         assert Schematic.objects.filter(title='Real Schematic').exists()
         assert User.objects.filter(username='realuser').exists()
+        
+        # Test users should be removed
+        assert User.objects.filter(username__startswith='testuser').count() == 0

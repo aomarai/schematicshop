@@ -59,7 +59,7 @@ class Command(BaseCommand):
         for tag_name in tag_names:
             tag, created = Tag.objects.get_or_create(
                 name=tag_name,
-                defaults={'slug': slugify(tag_name)}
+                defaults={'slug': f'test-{slugify(tag_name)}'}
             )
             if created:
                 self.stdout.write(f'Created tag: {tag_name}')
