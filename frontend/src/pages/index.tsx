@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Upload, Search, Share2, Shield, Zap, Globe } from 'lucide-react'
 import Layout from '@/components/Layout'
@@ -39,14 +40,14 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="flex gap-4 justify-center"
           >
-            <button className="btn-primary text-lg px-8 py-3">
+            <Link href="/upload" className="btn-primary text-lg px-8 py-3">
               <Upload className="inline mr-2" size={20} />
               Upload Schematic
-            </button>
-            <button className="btn-secondary text-lg px-8 py-3">
+            </Link>
+            <Link href="/browse" className="btn-secondary text-lg px-8 py-3">
               <Search className="inline mr-2" size={20} />
               Browse Library
-            </button>
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -114,7 +115,7 @@ export default function Home() {
             <h2 className="text-4xl font-bold">
               Trending <span className="gradient-text">Builds</span>
             </h2>
-            <button className="btn-secondary">View All</button>
+            <Link href="/browse" className="btn-secondary">View All</Link>
           </div>
           <SchematicGrid />
         </div>
@@ -129,9 +130,9 @@ export default function Home() {
           <p className="text-xl mb-8 opacity-90">
             Join thousands of builders sharing their creations on SchematicShop
           </p>
-          <button className="bg-white text-primary-600 hover:bg-primary-50 btn text-lg px-8 py-3">
+          <Link href="/upload" className="bg-white text-primary-600 hover:bg-primary-50 btn text-lg px-8 py-3">
             Get Started Free
-          </button>
+          </Link>
         </div>
       </section>
     </Layout>
