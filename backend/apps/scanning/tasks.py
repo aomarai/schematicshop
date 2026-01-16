@@ -72,13 +72,16 @@ def scan_file_task(self, schematic_id):
             # Flag the user account
             try:
                 user = schematic.owner
-                # Increment infected file count (you may want to add this field to User model)
-                if hasattr(user, 'infected_upload_count'):
-                    user.infected_upload_count += 1
-                    user.save(update_fields=['infected_upload_count'])
-                logger.warning(f"Flagged user {user.username} for uploading infected file")
+                user.infected_upload_count += 1
+                user.save(update_fields=['infected_upload_count'])
+                logger.warning(
+                    f"Flagged user {user.username} for uploading infected file "
+                    f"(total: {user.infected_upload_count})"
+                )
             except Exception as flag_error:
-                logger.error(f"Error flagging user for {schematic_id}: {flag_error}")
+                logger.error(
+                    f"Error flagging user for {schematic_id}: {flag_error.__class__.__name__}: {flag_error}"
+                )
             
             return scan_result
             
@@ -144,6 +147,7 @@ def scan_file_task(self, schematic_id):
                 
         except Exception as inner_exc:
             logger.error(
-                f"Failed to update scan error status for schematic {schematic_id}: {inner_exc}"
+                f"Failed to update scan error status for schematic {schematic_id}: "
+                f"{inner_exc.__class__.__name__}: {inner_exc}"
             )
         return None
