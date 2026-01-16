@@ -580,3 +580,192 @@ class TestTrendingSchematics:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) > 0
+
+
+@pytest.mark.django_db
+class TestSchematicImages:
+    """Test schematic image upload functionality"""
+
+    def setup_method(self):
+        """Set up test client and user"""
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.schematic = Schematic.objects.create(
+            owner=self.user,
+            title='Test Schematic',
+            file='test.schematic',
+            file_size=1024,
+            file_hash='abc123',
+            is_public=True,
+            scan_status='clean'
+        )
+
+    def test_upload_image_authenticated(self):
+        """Test uploading an image as the owner"""
+        self.client.force_authenticate(user=self.user)
+
+        # Create a simple test image
+        from io import BytesIO
+        from PIL import Image
+
+        image = Image.new('RGB', (100, 100), color='red')
+        image_file = BytesIO()
+        image.save(image_file, 'PNG')
+        image_file.seek(0)
+        
+        test_image = SimpleUploadedFile(
+            'test_image.png',
+            image_file.read(),
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {
+            'image': test_image,
+            'caption': 'Test image',
+            'order': 0
+        }
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert 'image_url' in response.data
+        assert response.data['caption'] == 'Test image'
+
+    def test_upload_image_unauthenticated(self):
+        """Test uploading an image without authentication"""
+        from io import BytesIO
+        from PIL import Image
+
+        image = Image.new('RGB', (100, 100), color='red')
+        image_file = BytesIO()
+        image.save(image_file, 'PNG')
+        image_file.seek(0)
+        
+        test_image = SimpleUploadedFile(
+            'test_image.png',
+            image_file.read(),
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_image}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_upload_image_not_owner(self):
+        """Test uploading an image to someone else's schematic"""
+        other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='testpass123'
+        )
+        self.client.force_authenticate(user=other_user)
+
+        from io import BytesIO
+        from PIL import Image
+
+        image = Image.new('RGB', (100, 100), color='red')
+        image_file = BytesIO()
+        image.save(image_file, 'PNG')
+        image_file.seek(0)
+        
+        test_image = SimpleUploadedFile(
+            'test_image.png',
+            image_file.read(),
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_image}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_list_images(self):
+        """Test getting all images for a schematic"""
+        from apps.schematics.models import SchematicImage
+
+        # Create test images
+        SchematicImage.objects.create(
+            schematic=self.schematic,
+            image='test1.png',
+            caption='Image 1',
+            order=0
+        )
+        SchematicImage.objects.create(
+            schematic=self.schematic,
+            image='test2.png',
+            caption='Image 2',
+            order=1
+        )
+
+        url = reverse('schematic-images', kwargs={'pk': self.schematic.id})
+        response = self.client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 2
+        assert response.data[0]['caption'] == 'Image 1'
+
+    def test_delete_image_owner(self):
+        """Test deleting an image as the owner"""
+        from apps.schematics.models import SchematicImage
+
+        self.client.force_authenticate(user=self.user)
+
+        image = SchematicImage.objects.create(
+            schematic=self.schematic,
+            image='test.png',
+            caption='Test',
+            order=0
+        )
+
+        url = reverse('schematic-delete-image', kwargs={'pk': self.schematic.id, 'image_id': image.id})
+        response = self.client.delete(url)
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not SchematicImage.objects.filter(id=image.id).exists()
+
+    def test_max_images_limit(self):
+        """Test that max images limit is enforced"""
+        from apps.schematics.models import SchematicImage
+
+        self.client.force_authenticate(user=self.user)
+
+        # Create 10 images (max limit)
+        for i in range(10):
+            SchematicImage.objects.create(
+                schematic=self.schematic,
+                image=f'test{i}.png',
+                order=i
+            )
+
+        # Try to upload 11th image
+        from io import BytesIO
+        from PIL import Image
+
+        image = Image.new('RGB', (100, 100), color='red')
+        image_file = BytesIO()
+        image.save(image_file, 'PNG')
+        image_file.seek(0)
+        
+        test_image = SimpleUploadedFile(
+            'test_image.png',
+            image_file.read(),
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_image}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Maximum' in str(response.data)

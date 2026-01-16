@@ -9,10 +9,11 @@ from django.db.models import Q, Count
 from django.utils import timezone
 import hashlib
 
-from .models import Schematic, Tag, SchematicLike
+from .models import Schematic, Tag, SchematicLike, SchematicImage
 from .serializers import (
     SchematicListSerializer, SchematicDetailSerializer,
-    SchematicUploadSerializer, TagSerializer, CommentSerializer
+    SchematicUploadSerializer, TagSerializer, CommentSerializer,
+    SchematicImageSerializer
 )
 from apps.scanning.tasks import scan_file_task
 
@@ -42,7 +43,7 @@ class SchematicViewSet(viewsets.ModelViewSet):
         return SchematicDetailSerializer
 
     def get_queryset(self):
-        queryset = Schematic.objects.select_related('owner').prefetch_related('tags', 'likes')
+        queryset = Schematic.objects.select_related('owner').prefetch_related('tags', 'likes', 'images')
 
         # Filter based on user
         if self.request.user.is_authenticated:
@@ -163,6 +164,61 @@ class SchematicViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def upload_image(self, request, pk=None):
+        """Upload an image for a schematic"""
+        schematic = self.get_object()
+        
+        # Check if user owns the schematic
+        if schematic.owner != request.user:
+            return Response(
+                {'error': 'You can only upload images to your own schematics'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if max images reached (limit to 10 images per schematic)
+        if schematic.images.count() >= 10:
+            return Response(
+                {'error': 'Maximum of 10 images per schematic'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = SchematicImageSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(schematic=schematic)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def images(self, request, pk=None):
+        """Get all images for a schematic"""
+        schematic = self.get_object()
+        images = schematic.images.all()
+        serializer = SchematicImageSerializer(images, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['delete'], url_path='images/(?P<image_id>[^/.]+)', permission_classes=[permissions.IsAuthenticated])
+    def delete_image(self, request, pk=None, image_id=None):
+        """Delete an image from a schematic"""
+        schematic = self.get_object()
+        
+        # Check if user owns the schematic
+        if schematic.owner != request.user:
+            return Response(
+                {'error': 'You can only delete images from your own schematics'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            image = SchematicImage.objects.get(id=image_id, schematic=schematic)
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except SchematicImage.DoesNotExist:
+            return Response(
+                {'error': 'Image not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
