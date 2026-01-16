@@ -32,14 +32,14 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="btn-secondary hidden md:flex items-center gap-2">
+            <Link href="/browse" className="btn-secondary hidden md:flex items-center gap-2">
               <Search size={18} />
               Search
-            </button>
-            <button className="btn-primary flex items-center gap-2">
+            </Link>
+            <Link href="/upload" className="btn-primary flex items-center gap-2">
               <Upload size={18} />
               <span className="hidden md:inline">Upload</span>
-            </button>
+            </Link>
             <button className="btn-secondary">
               <User size={18} />
             </button>
