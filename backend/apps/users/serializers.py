@@ -3,6 +3,8 @@ User serializers
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from .models import Warning, Ban, ModerationAction
 
 User = get_user_model()
 
@@ -11,15 +13,17 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for user profile"""
     storage_available = serializers.ReadOnlyField()
     storage_percentage = serializers.ReadOnlyField()
+    is_banned = serializers.ReadOnlyField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'bio', 'avatar', 'storage_quota', 'storage_used',
-            'storage_available', 'storage_percentage', 'created_at'
+            'storage_available', 'storage_percentage', 'created_at',
+            'is_banned', 'ban_expires_at', 'ban_reason'
         ]
-        read_only_fields = ['id', 'storage_used', 'created_at']
+        read_only_fields = ['id', 'storage_used', 'created_at', 'is_banned', 'ban_expires_at', 'ban_reason']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -40,3 +44,56 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
         return user
+
+
+class WarningSerializer(serializers.ModelSerializer):
+    """Serializer for user warnings"""
+    issued_by_username = serializers.CharField(source='issued_by.username', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = Warning
+        fields = ['id', 'user', 'user_username', 'issued_by', 'issued_by_username', 
+                  'reason', 'is_acknowledged', 'created_at']
+        read_only_fields = ['id', 'issued_by', 'created_at']
+
+
+class BanSerializer(serializers.ModelSerializer):
+    """Serializer for user bans"""
+    issued_by_username = serializers.CharField(source='issued_by.username', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = Ban
+        fields = ['id', 'user', 'user_username', 'issued_by', 'issued_by_username',
+                  'ban_type', 'reason', 'expires_at', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'issued_by', 'created_at', 'updated_at']
+    
+    def validate(self, attrs):
+        """Validate ban data"""
+        if attrs.get('ban_type') == 'temporary' and not attrs.get('expires_at'):
+            raise serializers.ValidationError({
+                'expires_at': 'Expiration date is required for temporary bans'
+            })
+        if attrs.get('ban_type') == 'temporary' and attrs.get('expires_at'):
+            if attrs['expires_at'] <= timezone.now():
+                raise serializers.ValidationError({
+                    'expires_at': 'Expiration date must be in the future'
+                })
+        if attrs.get('ban_type') == 'permanent' and attrs.get('expires_at'):
+            raise serializers.ValidationError({
+                'expires_at': 'Permanent bans should not have an expiration date'
+            })
+        return attrs
+
+
+class ModerationActionSerializer(serializers.ModelSerializer):
+    """Serializer for moderation action audit log"""
+    moderator_username = serializers.CharField(source='moderator.username', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = ModerationAction
+        fields = ['id', 'user', 'user_username', 'moderator', 'moderator_username',
+                  'action_type', 'reason', 'details', 'ip_address', 'created_at']
+        read_only_fields = ['id', 'moderator', 'created_at']
