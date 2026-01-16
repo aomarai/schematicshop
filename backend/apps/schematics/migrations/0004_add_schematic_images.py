@@ -32,6 +32,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='schematicimage',
-            index=models.Index(fields=['schematic', 'order'], name='schematics_schematic_order_idx'),
+            index=models.Index(fields=['schematic', 'order'], name='schematics_schematicimage_sch_order_idx'),
         ),
     ]

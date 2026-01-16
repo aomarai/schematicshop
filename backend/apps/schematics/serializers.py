@@ -38,12 +38,34 @@ class SchematicImageSerializer(serializers.ModelSerializer):
         return None
     
     def validate_image(self, value):
+        from PIL import Image
+        import io
+        
         # File size validation (max 5MB for images)
         max_size = 5 * 1024 * 1024
         if value.size > max_size:
             raise serializers.ValidationError(
-                f"Image size must not exceed 5MB"
+                "Image size must not exceed 5MB"
             )
+        
+        # Content-based validation - verify it's actually an image
+        try:
+            image = Image.open(value)
+            image.verify()
+            
+            # Reset file pointer after verification
+            value.seek(0)
+            
+            # Validate format is in allowed list
+            if image.format.lower() not in ['jpeg', 'png', 'webp']:
+                raise serializers.ValidationError(
+                    "Image format must be JPEG, PNG, or WebP"
+                )
+        except Exception as e:
+            raise serializers.ValidationError(
+                f"Invalid image file: {str(e)}"
+            )
+        
         return value
 
 
@@ -53,7 +75,8 @@ class SchematicListSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     likes_count = serializers.IntegerField(source='likes.count', read_only=True)
     is_liked = serializers.SerializerMethodField()
-    images = SchematicImageSerializer(many=True, read_only=True)
+    first_image = serializers.SerializerMethodField()
+    images_count = serializers.IntegerField(source='images.count', read_only=True)
 
     class Meta:
         model = Schematic
@@ -62,7 +85,7 @@ class SchematicListSerializer(serializers.ModelSerializer):
             'minecraft_version', 'width', 'height', 'length',
             'tags', 'category', 'is_public', 'scan_status',
             'download_count', 'view_count', 'thumbnail_url',
-            'likes_count', 'is_liked', 'images', 'created_at', 'updated_at'
+            'likes_count', 'is_liked', 'first_image', 'images_count', 'created_at', 'updated_at'
         ]
 
     def get_is_liked(self, obj):
@@ -70,6 +93,12 @@ class SchematicListSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return SchematicLike.objects.filter(user=request.user, schematic=obj).exists()
         return False
+    
+    def get_first_image(self, obj):
+        first_image = obj.images.first()
+        if first_image:
+            return SchematicImageSerializer(first_image, context=self.context).data
+        return None
 
 
 class SchematicDetailSerializer(serializers.ModelSerializer):

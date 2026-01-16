@@ -139,7 +139,7 @@ export default function SchematicDetail() {
                   <ImageIcon size={20} />
                   Build Images ({schematic.images.length})
                 </h3>
-                <ImageGallery images={schematic.images} />
+                <ImageGallery images={schematic.images} schematicTitle={schematic.title} />
               </motion.div>
             )}
 

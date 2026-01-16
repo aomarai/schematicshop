@@ -39,9 +39,9 @@ export default function SchematicGrid() {
         >
           {/* Thumbnail */}
           <div className="relative h-48 bg-gradient-to-br from-primary-100 to-secondary-100 overflow-hidden">
-            {schematic.images && schematic.images.length > 0 ? (
+            {schematic.first_image ? (
               <img 
-                src={schematic.images[0].image_url} 
+                src={schematic.first_image.image_url} 
                 alt={schematic.title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform"
               />

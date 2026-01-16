@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
@@ -8,9 +8,10 @@ interface ImageGalleryProps {
     image_url: string
     caption?: string
   }>
+  schematicTitle?: string
 }
 
-export default function ImageGallery({ images }: ImageGalleryProps) {
+export default function ImageGallery({ images, schematicTitle }: ImageGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
   if (!images || images.length === 0) {
@@ -37,6 +38,24 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
     }
   }
 
+  // Keyboard navigation
+  useEffect(() => {
+    if (selectedIndex === null) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeLightbox()
+      } else if (e.key === 'ArrowLeft') {
+        goToPrevious()
+      } else if (e.key === 'ArrowRight') {
+        goToNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedIndex, images.length])
+
   return (
     <>
       {/* Gallery Grid */}
@@ -52,7 +71,7 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
           >
             <img
               src={image.image_url}
-              alt={image.caption || `Image ${index + 1}`}
+              alt={image.caption || (schematicTitle ? `Build image ${index + 1} for ${schematicTitle}` : `Gallery image ${index + 1}`)}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
             />
             {image.caption && (
@@ -72,12 +91,16 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Image gallery lightbox"
             className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
             onClick={closeLightbox}
           >
             {/* Close Button */}
             <button
               onClick={closeLightbox}
+              aria-label="Close lightbox"
               className="absolute top-4 right-4 text-white hover:text-secondary-300 transition-colors z-10"
             >
               <X size={32} />
@@ -90,6 +113,7 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
                   e.stopPropagation()
                   goToPrevious()
                 }}
+                aria-label="Previous image"
                 className="absolute left-4 text-white hover:text-secondary-300 transition-colors z-10"
               >
                 <ChevronLeft size={48} />
@@ -108,7 +132,7 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
             >
               <img
                 src={images[selectedIndex].image_url}
-                alt={images[selectedIndex].caption || `Image ${selectedIndex + 1}`}
+                alt={images[selectedIndex].caption || (schematicTitle ? `Build image ${selectedIndex + 1} for ${schematicTitle}` : `Gallery image ${selectedIndex + 1}`)}
                 className="max-w-full max-h-[85vh] object-contain rounded-lg"
               />
               {images[selectedIndex].caption && (
@@ -130,6 +154,7 @@ export default function ImageGallery({ images }: ImageGalleryProps) {
                   e.stopPropagation()
                   goToNext()
                 }}
+                aria-label="Next image"
                 className="absolute right-4 text-white hover:text-secondary-300 transition-colors z-10"
               >
                 <ChevronRight size={48} />

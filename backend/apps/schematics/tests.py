@@ -769,3 +769,69 @@ class TestSchematicImages:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Maximum' in str(response.data)
+
+    def test_upload_image_too_large(self):
+        """Test that images larger than 5MB are rejected"""
+        self.client.force_authenticate(user=self.user)
+
+        from io import BytesIO
+        from PIL import Image
+
+        # Create a large image (this will be smaller than 5MB but we'll fake the size)
+        image = Image.new('RGB', (100, 100), color='red')
+        image_file = BytesIO()
+        image.save(image_file, 'PNG')
+        image_file.seek(0)
+        
+        # Create a file that's too large (over 5MB)
+        large_content = b'x' * (6 * 1024 * 1024)  # 6MB
+        test_image = SimpleUploadedFile(
+            'large_image.png',
+            large_content,
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_image}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert '5MB' in str(response.data) or 'size' in str(response.data).lower()
+
+    def test_upload_invalid_file_type(self):
+        """Test that non-image files are rejected"""
+        self.client.force_authenticate(user=self.user)
+
+        # Try to upload a text file as an image
+        test_file = SimpleUploadedFile(
+            'test.txt',
+            b'This is not an image',
+            content_type='text/plain'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_file}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_fake_image_extension(self):
+        """Test that files with image extensions but invalid content are rejected"""
+        self.client.force_authenticate(user=self.user)
+
+        # Create a file with .png extension but non-image content
+        test_file = SimpleUploadedFile(
+            'fake.png',
+            b'This is not a real image file',
+            content_type='image/png'
+        )
+
+        url = reverse('schematic-upload-image', kwargs={'pk': self.schematic.id})
+        data = {'image': test_file}
+
+        response = self.client.post(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Invalid image' in str(response.data) or 'image' in str(response.data).lower()

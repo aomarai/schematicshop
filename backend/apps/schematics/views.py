@@ -213,6 +213,14 @@ class SchematicViewSet(viewsets.ModelViewSet):
         try:
             image = SchematicImage.objects.get(id=image_id, schematic=schematic)
             image.delete()
+            
+            # Reorder remaining images to keep a contiguous ordering sequence
+            remaining_images = schematic.images.all().order_by('order')
+            for index, img in enumerate(remaining_images):
+                if img.order != index:
+                    img.order = index
+                    img.save(update_fields=['order'])
+            
             return Response(status=status.HTTP_204_NO_CONTENT)
         except SchematicImage.DoesNotExist:
             return Response(

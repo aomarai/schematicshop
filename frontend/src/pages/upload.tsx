@@ -102,28 +102,46 @@ export default function Upload() {
         setUploadStage('images')
         setUploadProgress(0)
         
-        for (let i = 0; i < images.length; i++) {
-          const imageFormData = new FormData()
-          imageFormData.append('image', images[i])
-          imageFormData.append('order', String(i))
+        try {
+          for (let i = 0; i < images.length; i++) {
+            const imageFormData = new FormData()
+            imageFormData.append('image', images[i])
+            imageFormData.append('order', String(i))
 
-          await axios.post(
-            `${API_URL}/api/schematics/${schematicId}/upload_image/`,
-            imageFormData,
-            {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-              onUploadProgress: (progressEvent) => {
-                if (progressEvent.total) {
-                  const imageProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                  // Show overall image upload progress
-                  const totalProgress = Math.round(((i + imageProgress / 100) / images.length) * 100)
-                  setUploadProgress(totalProgress)
-                }
-              },
-            }
+            await axios.post(
+              `${API_URL}/api/schematics/${schematicId}/upload_image/`,
+              imageFormData,
+              {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+                onUploadProgress: (progressEvent) => {
+                  if (progressEvent.total) {
+                    const imageProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                    // Show overall image upload progress
+                    const totalProgress = Math.round(((i + imageProgress / 100) / images.length) * 100)
+                    setUploadProgress(totalProgress)
+                  }
+                },
+              }
+            )
+          }
+        } catch (imageError: any) {
+          console.error('Image upload error:', imageError)
+          // Partial success - schematic uploaded but some images failed
+          setUploadError(
+            `Schematic uploaded successfully, but some images failed: ${
+              imageError.response?.data?.error || 
+              imageError.response?.data?.detail || 
+              imageError.response?.data?.message ||
+              'Image upload error'
+            }`
           )
+          setIsUploading(false)
+          setTimeout(() => {
+            router.push(`/schematic/${schematicId}`)
+          }, 3000)
+          return
         }
       }
 
@@ -134,6 +152,7 @@ export default function Upload() {
     } catch (error: any) {
       console.error('Upload error:', error)
       setUploadError(
+        error.response?.data?.error ||
         error.response?.data?.detail || 
         error.response?.data?.message ||
         'Failed to upload schematic. Please try again.'

@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { X, Upload as UploadIcon, Image as ImageIcon } from 'lucide-react'
+import { X, Image as ImageIcon } from 'lucide-react'
 
 interface ImageUploadProps {
   onImagesChange: (images: File[]) => void
@@ -14,22 +14,25 @@ interface PreviewImage {
 
 export default function ImageUpload({ onImagesChange, maxImages = 10 }: ImageUploadProps) {
   const [images, setImages] = useState<PreviewImage[]>([])
+  const urlsRef = useRef<Set<string>>(new Set())
 
-  // Cleanup object URLs to prevent memory leaks
+  // Cleanup object URLs only on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      images.forEach(img => URL.revokeObjectURL(img.preview))
+      urlsRef.current.forEach(url => URL.revokeObjectURL(url))
+      urlsRef.current.clear()
     }
-  }, [images])
+  }, [])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const remainingSlots = maxImages - images.length
     const filesToAdd = acceptedFiles.slice(0, remainingSlots)
 
-    const newImages = filesToAdd.map(file => ({
-      file,
-      preview: URL.createObjectURL(file)
-    }))
+    const newImages = filesToAdd.map(file => {
+      const preview = URL.createObjectURL(file)
+      urlsRef.current.add(preview)
+      return { file, preview }
+    })
 
     const updatedImages = [...images, ...newImages]
     setImages(updatedImages)
@@ -47,7 +50,9 @@ export default function ImageUpload({ onImagesChange, maxImages = 10 }: ImageUpl
 
   const removeImage = (index: number) => {
     // Revoke the URL before removing
-    URL.revokeObjectURL(images[index].preview)
+    const url = images[index].preview
+    URL.revokeObjectURL(url)
+    urlsRef.current.delete(url)
     const updatedImages = images.filter((_, i) => i !== index)
     setImages(updatedImages)
     onImagesChange(updatedImages.map(img => img.file))
