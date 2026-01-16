@@ -124,7 +124,7 @@ export default function SchematicDetail() {
               <div className="flex items-center gap-4 text-secondary-600 mb-6 pb-6 border-b">
                 <div className="flex items-center gap-2">
                   <User size={18} />
-                  <span>by <Link href={`/user/${schematic.owner?.username}`} className="font-medium text-primary-600 hover:underline">{schematic.owner?.username || 'Unknown'}</Link></span>
+                  <span>by <span className="font-medium text-secondary-700">{schematic.owner?.username || 'Unknown'}</span></span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar size={18} />
