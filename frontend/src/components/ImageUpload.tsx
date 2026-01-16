@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { X, Upload as UploadIcon, Image as ImageIcon } from 'lucide-react'
 
@@ -14,6 +14,13 @@ interface PreviewImage {
 
 export default function ImageUpload({ onImagesChange, maxImages = 10 }: ImageUploadProps) {
   const [images, setImages] = useState<PreviewImage[]>([])
+
+  // Cleanup object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      images.forEach(img => URL.revokeObjectURL(img.preview))
+    }
+  }, [images])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const remainingSlots = maxImages - images.length
@@ -39,6 +46,8 @@ export default function ImageUpload({ onImagesChange, maxImages = 10 }: ImageUpl
   })
 
   const removeImage = (index: number) => {
+    // Revoke the URL before removing
+    URL.revokeObjectURL(images[index].preview)
     const updatedImages = images.filter((_, i) => i !== index)
     setImages(updatedImages)
     onImagesChange(updatedImages.map(img => img.file))

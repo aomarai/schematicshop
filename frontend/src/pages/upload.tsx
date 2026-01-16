@@ -21,6 +21,7 @@ export default function Upload() {
   const [isPublic, setIsPublic] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStage, setUploadStage] = useState<'schematic' | 'images'>('schematic')
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
 
@@ -62,6 +63,7 @@ export default function Upload() {
     setIsUploading(true)
     setUploadError('')
     setUploadProgress(0)
+    setUploadStage('schematic')
 
     try {
       const formData = new FormData()
@@ -97,7 +99,9 @@ export default function Upload() {
 
       // Upload images if any
       if (images.length > 0) {
+        setUploadStage('images')
         setUploadProgress(0)
+        
         for (let i = 0; i < images.length; i++) {
           const imageFormData = new FormData()
           imageFormData.append('image', images[i])
@@ -113,6 +117,7 @@ export default function Upload() {
               onUploadProgress: (progressEvent) => {
                 if (progressEvent.total) {
                   const imageProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                  // Show overall image upload progress
                   const totalProgress = Math.round(((i + imageProgress / 100) / images.length) * 100)
                   setUploadProgress(totalProgress)
                 }
@@ -223,7 +228,9 @@ export default function Upload() {
             {isUploading && (
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Uploading...</span>
+                  <span className="text-sm font-medium">
+                    {uploadStage === 'schematic' ? 'Uploading schematic...' : `Uploading images (${uploadProgress}%)...`}
+                  </span>
                   <span className="text-sm text-secondary-600">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-secondary-200 rounded-full h-2">

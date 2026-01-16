@@ -20,6 +20,33 @@ class SchematicOwnerSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'avatar']
 
 
+class SchematicImageSerializer(serializers.ModelSerializer):
+    """Serializer for schematic images"""
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SchematicImage
+        fields = ['id', 'image', 'image_url', 'caption', 'order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+    
+    def validate_image(self, value):
+        # File size validation (max 5MB for images)
+        max_size = 5 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(
+                f"Image size must not exceed 5MB"
+            )
+        return value
+
+
 class SchematicListSerializer(serializers.ModelSerializer):
     """Serializer for listing schematics"""
     owner = SchematicOwnerSerializer(read_only=True)
@@ -162,30 +189,3 @@ class CommentSerializer(serializers.ModelSerializer):
         if obj.replies.exists():
             return CommentSerializer(obj.replies.all(), many=True).data
         return []
-
-
-class SchematicImageSerializer(serializers.ModelSerializer):
-    """Serializer for schematic images"""
-    image_url = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = SchematicImage
-        fields = ['id', 'image', 'image_url', 'caption', 'order', 'created_at']
-        read_only_fields = ['id', 'created_at']
-    
-    def get_image_url(self, obj):
-        if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
-    
-    def validate_image(self, value):
-        # File size validation (max 5MB for images)
-        max_size = 5 * 1024 * 1024
-        if value.size > max_size:
-            raise serializers.ValidationError(
-                f"Image size must not exceed 5MB"
-            )
-        return value
