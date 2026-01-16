@@ -5,6 +5,7 @@ from celery import shared_task
 from django.utils import timezone
 from django.apps import apps
 from django.core.files.storage import default_storage
+from django.db.models import F
 import logging
 import os
 
@@ -69,11 +70,13 @@ def scan_file_task(self, schematic_id):
                 except Exception as delete_error:
                     logger.error(f"Error deleting infected file for {schematic_id}: {delete_error}")
             
-            # Flag the user account
+            # Flag the user account (atomic update to prevent race conditions)
             try:
                 user = schematic.owner
-                user.infected_upload_count += 1
-                user.save(update_fields=['infected_upload_count'])
+                User.objects.filter(id=user.id).update(
+                    infected_upload_count=F('infected_upload_count') + 1
+                )
+                user.refresh_from_db()
                 logger.warning(
                     f"Flagged user {user.username} for uploading infected file "
                     f"(total: {user.infected_upload_count})"
@@ -97,8 +100,8 @@ def scan_file_task(self, schematic_id):
                 f"{schematic.max_scan_retries}"
             )
             
-            # Retry with exponential backoff
-            countdown = 2 ** schematic.scan_retry_count * 60  # 2, 4, 8, 16, 32 minutes
+            # Retry with exponential backoff (capped at 15 minutes)
+            countdown = min(2 ** schematic.scan_retry_count * 60, 900)  # Max 15 minutes
             raise self.retry(exc=Exception(scan_result.get('error')), countdown=countdown)
             
         else:
@@ -142,7 +145,8 @@ def scan_file_task(self, schematic_id):
                 schematic.scan_result = {'error': str(e)}
                 schematic.save(update_fields=['scan_status', 'scan_result', 'scan_retry_count'])
                 
-                countdown = 2 ** schematic.scan_retry_count * 60
+                # Retry with exponential backoff (capped at 15 minutes)
+                countdown = min(2 ** schematic.scan_retry_count * 60, 900)
                 raise self.retry(exc=e, countdown=countdown)
                 
         except Exception as inner_exc:

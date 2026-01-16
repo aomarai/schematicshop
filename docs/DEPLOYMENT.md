@@ -195,7 +195,7 @@ gcloud container clusters create schematicshop \
 2. **Create Cloud SQL instance**:
 ```bash
 gcloud sql instances create schematicshop-db \
-  --database-version=POSTGRES_15 \
+  --database-version=POSTGRES_18 \
   --tier=db-f1-micro \
   --region=us-central1
 ```
