@@ -201,6 +201,8 @@ if USE_S3:
     AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL', default=None)
     AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='us-east-1')
     AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN', default=None)
+    AWS_S3_URL_PROTOCOL = env('AWS_S3_URL_PROTOCOL', default='https:')
+    AWS_S3_USE_SSL = env.bool('AWS_S3_USE_SSL', default=True)
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = 'public-read'
     AWS_QUERYSTRING_AUTH = False
