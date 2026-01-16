@@ -326,7 +326,12 @@ for action in actions:
 2. **Audit Trail**: All moderation actions are logged with timestamp, moderator, and IP address
 3. **Middleware Protection**: Banned users are automatically blocked from API access
 4. **Data Retention**: Disabled accounts retain all data for potential review
-5. **No Self-Moderation**: Users cannot moderate themselves
+5. **Self-Moderation Prevention**: Moderators cannot ban, warn, or disable themselves
+6. **Staff Protection**: Only superusers can ban or disable other staff members
+7. **Immutable Records**: Warnings and bans are read-only after creation to maintain audit integrity
+8. **Proxy-Aware IP Logging**: IP addresses are captured correctly behind proxies using X-Forwarded-For
+9. **Transaction Safety**: All moderation actions use atomic transactions to prevent inconsistent states
+10. **Performance Optimization**: Database index on ban_expires_at for efficient ban status checks
 
 ## Future Enhancements
 

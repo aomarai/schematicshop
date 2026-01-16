@@ -22,7 +22,7 @@ class User(AbstractUser):
     )  # Track infected file uploads
     
     # Moderation fields
-    ban_expires_at = models.DateTimeField(null=True, blank=True)
+    ban_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     ban_reason = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -103,15 +103,27 @@ class Ban(models.Model):
     
     def save(self, *args, **kwargs):
         """Apply ban to user when created"""
-        super().save(*args, **kwargs)
-        if self.is_active:
+        is_new = self.pk is None
+        
+        if is_new and self.is_active:
+            # First save the ban record
+            super().save(*args, **kwargs)
+            
+            # Then apply ban to user using update() for atomicity
             if self.ban_type == 'permanent':
-                self.user.is_active = False
-                self.user.ban_expires_at = None
+                User.objects.filter(pk=self.user.pk).update(
+                    is_active=False,
+                    ban_expires_at=None,
+                    ban_reason=self.reason
+                )
             else:
-                self.user.ban_expires_at = self.expires_at
-            self.user.ban_reason = self.reason
-            self.user.save()
+                User.objects.filter(pk=self.user.pk).update(
+                    ban_expires_at=self.expires_at,
+                    ban_reason=self.reason
+                )
+        else:
+            # For updates, just save the ban record without modifying user
+            super().save(*args, **kwargs)
 
 
 class ModerationAction(models.Model):

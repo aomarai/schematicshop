@@ -70,11 +70,15 @@ class BanSerializer(serializers.ModelSerializer):
         model = Ban
         fields = ['id', 'user', 'user_username', 'issued_by', 'issued_by_username',
                   'ban_type', 'reason', 'expires_at', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'issued_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'issued_by', 'is_active', 'created_at', 'updated_at']
     
     def validate(self, attrs):
         """Validate ban data"""
+        # Get ban_type from attrs or from instance if it's an update
         ban_type = attrs.get('ban_type')
+        if not ban_type and self.instance:
+            ban_type = self.instance.ban_type
+        
         expires_at = attrs.get('expires_at')
         
         if ban_type == 'temporary':

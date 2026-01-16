@@ -1,7 +1,6 @@
 """
 Middleware for checking user ban status
 """
-from django.utils import timezone
 from django.http import JsonResponse
 from rest_framework import status
 

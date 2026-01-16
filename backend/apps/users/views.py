@@ -1,10 +1,11 @@
 """
 User views
 """
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, permissions, status, viewsets, mixins, serializers
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 
 from .serializers import (
@@ -15,6 +16,16 @@ from .models import Warning, Ban, ModerationAction
 from .permissions import IsModerator, IsModeratorOrReadOnly
 
 User = get_user_model()
+
+
+def get_client_ip(request):
+    """Get client IP address, accounting for proxies"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -61,8 +72,11 @@ def user_stats(request):
     })
 
 
-class WarningViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing user warnings"""
+class WarningViewSet(mixins.CreateModelMixin,
+                     mixins.RetrieveModelMixin,
+                     mixins.ListModelMixin,
+                     viewsets.GenericViewSet):
+    """ViewSet for managing user warnings (create and read only)"""
     serializer_class = WarningSerializer
     permission_classes = [IsModeratorOrReadOnly]
     
@@ -77,19 +91,31 @@ class WarningViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Create warning and log the action"""
-        warning = serializer.save(issued_by=self.request.user)
-        # Log the moderation action
-        ModerationAction.objects.create(
-            user=warning.user,
-            moderator=self.request.user,
-            action_type='warning',
-            reason=warning.reason,
-            ip_address=self.request.META.get('REMOTE_ADDR')
-        )
+        target_user = serializer.validated_data['user']
+        
+        # Prevent self-warning
+        if target_user == self.request.user:
+            raise serializers.ValidationError(
+                {'user': 'You cannot issue a warning to yourself'}
+            )
+        
+        with transaction.atomic():
+            warning = serializer.save(issued_by=self.request.user)
+            # Log the moderation action
+            ModerationAction.objects.create(
+                user=warning.user,
+                moderator=self.request.user,
+                action_type='warning',
+                reason=warning.reason,
+                ip_address=get_client_ip(self.request)
+            )
 
 
-class BanViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing user bans"""
+class BanViewSet(mixins.CreateModelMixin,
+                 mixins.RetrieveModelMixin,
+                 mixins.ListModelMixin,
+                 viewsets.GenericViewSet):
+    """ViewSet for managing user bans (create and read only)"""
     serializer_class = BanSerializer
     permission_classes = [IsModerator]
     
@@ -99,19 +125,34 @@ class BanViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Create ban and log the action"""
-        ban = serializer.save(issued_by=self.request.user)
-        # Log the moderation action
-        ModerationAction.objects.create(
-            user=ban.user,
-            moderator=self.request.user,
-            action_type='ban',
-            reason=ban.reason,
-            details={
-                'ban_type': ban.ban_type,
-                'expires_at': ban.expires_at.isoformat() if ban.expires_at else None
-            },
-            ip_address=self.request.META.get('REMOTE_ADDR')
-        )
+        target_user = serializer.validated_data['user']
+        
+        # Prevent self-banning
+        if target_user == self.request.user:
+            raise serializers.ValidationError(
+                {'user': 'You cannot ban yourself'}
+            )
+        
+        # Prevent non-superusers from banning staff members
+        if target_user.is_staff and not self.request.user.is_superuser:
+            raise serializers.ValidationError(
+                {'user': 'Only superusers can ban staff members'}
+            )
+        
+        with transaction.atomic():
+            ban = serializer.save(issued_by=self.request.user)
+            # Log the moderation action
+            ModerationAction.objects.create(
+                user=ban.user,
+                moderator=self.request.user,
+                action_type='ban',
+                reason=ban.reason,
+                details={
+                    'ban_type': ban.ban_type,
+                    'expires_at': ban.expires_at.isoformat() if ban.expires_at else None
+                },
+                ip_address=get_client_ip(self.request)
+            )
     
     @action(detail=True, methods=['post'])
     def revoke(self, request, pk=None):
@@ -123,20 +164,21 @@ class BanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        ban.is_active = False
-        ban.save()
-        
-        # Unban the user
-        ban.user.unban()
-        
-        # Log the moderation action
-        ModerationAction.objects.create(
-            user=ban.user,
-            moderator=request.user,
-            action_type='unban',
-            reason=f"Ban #{ban.id} revoked",
-            ip_address=request.META.get('REMOTE_ADDR')
-        )
+        with transaction.atomic():
+            ban.is_active = False
+            ban.save()
+            
+            # Unban the user
+            ban.user.unban()
+            
+            # Log the moderation action
+            ModerationAction.objects.create(
+                user=ban.user,
+                moderator=request.user,
+                action_type='unban',
+                reason=f"Ban #{ban.id} revoked",
+                ip_address=get_client_ip(request)
+            )
         
         return Response({'status': 'Ban revoked successfully'})
 
@@ -169,18 +211,34 @@ def disable_user_account(request, username):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    reason = request.data.get('reason', 'No reason provided')
-    user.is_active = False
-    user.save()
+    # Prevent self-disabling
+    if user == request.user:
+        return Response(
+            {'error': 'You cannot disable your own account'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
-    # Log the moderation action
-    ModerationAction.objects.create(
-        user=user,
-        moderator=request.user,
-        action_type='disable',
-        reason=reason,
-        ip_address=request.META.get('REMOTE_ADDR')
-    )
+    # Prevent non-superusers from disabling staff members
+    if user.is_staff and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only superusers can disable staff members'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    reason = request.data.get('reason', 'No reason provided')
+    
+    with transaction.atomic():
+        user.is_active = False
+        user.save()
+        
+        # Log the moderation action
+        ModerationAction.objects.create(
+            user=user,
+            moderator=request.user,
+            action_type='disable',
+            reason=reason,
+            ip_address=get_client_ip(request)
+        )
     
     return Response({
         'status': 'User account disabled successfully',
@@ -207,19 +265,23 @@ def enable_user_account(request, username):
         )
     
     reason = request.data.get('reason', 'No reason provided')
-    user.is_active = True
-    user.ban_expires_at = None
-    user.ban_reason = ''
-    user.save()
     
-    # Log the moderation action
-    ModerationAction.objects.create(
-        user=user,
-        moderator=request.user,
-        action_type='enable',
-        reason=reason,
-        ip_address=request.META.get('REMOTE_ADDR')
-    )
+    with transaction.atomic():
+        user.is_active = True
+        # Only clear ban information if the user has an active ban
+        if user.ban_expires_at and user.ban_expires_at > timezone.now():
+            user.ban_expires_at = None
+            user.ban_reason = ''
+        user.save()
+        
+        # Log the moderation action
+        ModerationAction.objects.create(
+            user=user,
+            moderator=request.user,
+            action_type='enable',
+            reason=reason,
+            ip_address=get_client_ip(request)
+        )
     
     return Response({
         'status': 'User account enabled successfully',

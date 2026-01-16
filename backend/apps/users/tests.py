@@ -687,3 +687,151 @@ class TestBanCheckMiddleware:
         response = self.client.get(stats_url)
         
         assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestModerationSecurityValidations:
+    """Test security validations for moderation actions"""
+
+    def setup_method(self):
+        """Set up test client and users"""
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.moderator = User.objects.create_user(
+            username='moderator',
+            email='mod@example.com',
+            password='modpass123',
+            is_staff=True
+        )
+        self.superuser = User.objects.create_user(
+            username='superuser',
+            email='super@example.com',
+            password='superpass123',
+            is_staff=True,
+            is_superuser=True
+        )
+        self.warnings_url = reverse('warning-list')
+        self.bans_url = reverse('ban-list')
+    
+    def test_moderator_cannot_warn_themselves(self):
+        """Test that moderators cannot warn themselves"""
+        self.client.force_authenticate(user=self.moderator)
+        data = {
+            'user': self.moderator.id,
+            'reason': 'Self-warning attempt'
+        }
+        response = self.client.post(self.warnings_url, data)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'yourself' in str(response.data).lower()
+    
+    def test_moderator_cannot_ban_themselves(self):
+        """Test that moderators cannot ban themselves"""
+        self.client.force_authenticate(user=self.moderator)
+        data = {
+            'user': self.moderator.id,
+            'ban_type': 'permanent',
+            'reason': 'Self-ban attempt'
+        }
+        response = self.client.post(self.bans_url, data)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'yourself' in str(response.data).lower()
+    
+    def test_moderator_cannot_disable_themselves(self):
+        """Test that moderators cannot disable themselves"""
+        self.client.force_authenticate(user=self.moderator)
+        disable_url = reverse('disable-user', kwargs={'username': self.moderator.username})
+        data = {'reason': 'Self-disable attempt'}
+        response = self.client.post(disable_url, data)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'own account' in str(response.data).lower()
+    
+    def test_moderator_cannot_ban_staff(self):
+        """Test that non-superuser moderators cannot ban staff members"""
+        staff_user = User.objects.create_user(
+            username='staff',
+            email='staff@example.com',
+            password='staffpass123',
+            is_staff=True
+        )
+        
+        self.client.force_authenticate(user=self.moderator)
+        data = {
+            'user': staff_user.id,
+            'ban_type': 'permanent',
+            'reason': 'Attempting to ban staff'
+        }
+        response = self.client.post(self.bans_url, data)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'superuser' in str(response.data).lower()
+    
+    def test_moderator_cannot_disable_staff(self):
+        """Test that non-superuser moderators cannot disable staff members"""
+        staff_user = User.objects.create_user(
+            username='staff',
+            email='staff@example.com',
+            password='staffpass123',
+            is_staff=True
+        )
+        
+        self.client.force_authenticate(user=self.moderator)
+        disable_url = reverse('disable-user', kwargs={'username': staff_user.username})
+        data = {'reason': 'Attempting to disable staff'}
+        response = self.client.post(disable_url, data)
+        
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert 'superuser' in str(response.data).lower()
+    
+    def test_superuser_can_ban_staff(self):
+        """Test that superusers can ban staff members"""
+        staff_user = User.objects.create_user(
+            username='staff',
+            email='staff@example.com',
+            password='staffpass123',
+            is_staff=True
+        )
+        
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'user': staff_user.id,
+            'ban_type': 'permanent',
+            'reason': 'Superuser banning staff'
+        }
+        response = self.client.post(self.bans_url, data)
+        
+        assert response.status_code == status.HTTP_201_CREATED
+        
+        # Check if ban was created
+        ban = Ban.objects.filter(user=staff_user).first()
+        assert ban is not None, "Ban should exist"
+        assert ban.ban_type == 'permanent', f"Ban type should be permanent, got {ban.ban_type}"
+        assert ban.is_active is True, f"Ban should be active, is_active={ban.is_active}"
+        
+        # Manually check what the database says
+        staff_user_fresh = User.objects.get(pk=staff_user.pk)
+        assert staff_user_fresh.is_active is False, f"Fresh query: User should be inactive after permanent ban, is_active={staff_user_fresh.is_active}"
+    
+    def test_superuser_can_disable_staff(self):
+        """Test that superusers can disable staff members"""
+        staff_user = User.objects.create_user(
+            username='staff',
+            email='staff@example.com',
+            password='staffpass123',
+            is_staff=True
+        )
+        
+        self.client.force_authenticate(user=self.superuser)
+        disable_url = reverse('disable-user', kwargs={'username': staff_user.username})
+        data = {'reason': 'Superuser disabling staff'}
+        response = self.client.post(disable_url, data)
+        
+        assert response.status_code == status.HTTP_200_OK
+        staff_user.refresh_from_db()
+        assert staff_user.is_active is False
