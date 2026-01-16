@@ -19,9 +19,15 @@ User = get_user_model()
 
 
 def get_client_ip(request):
-    """Get client IP address, accounting for proxies"""
+    """
+    Get client IP address, accounting for proxies
+    
+    Note: X-Forwarded-For can be spoofed. In production, ensure requests
+    come through trusted proxies and consider additional validation.
+    """
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
+        # Take the first IP in the chain (original client)
         ip = x_forwarded_for.split(',')[0].strip()
     else:
         ip = request.META.get('REMOTE_ADDR')
@@ -267,11 +273,11 @@ def enable_user_account(request, username):
     reason = request.data.get('reason', 'No reason provided')
     
     with transaction.atomic():
-        user.is_active = True
-        # Only clear ban information if the user has an active ban
+        # Only clear ban information if the user has an active temporary ban
         if user.ban_expires_at and user.ban_expires_at > timezone.now():
             user.ban_expires_at = None
             user.ban_reason = ''
+        user.is_active = True
         user.save()
         
         # Log the moderation action
