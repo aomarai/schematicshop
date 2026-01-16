@@ -136,7 +136,22 @@ docker-compose exec backend python manage.py migrate
 docker-compose exec backend python manage.py createsuperuser
 ```
 
-5. **Access the application**:
+5. **Load test/dummy schematics** (recommended for development):
+```bash
+docker-compose exec backend python manage.py load_test_schematics
+```
+
+This will create:
+- 8 sample schematics with realistic data
+- 3 test users (testuser1, testuser2, testuser3) with password `testpass123`
+- Common tags (medieval, modern, fantasy, redstone, etc.)
+
+To clear test data later:
+```bash
+docker-compose exec backend python manage.py clear_test_schematics
+```
+
+6. **Access the application**:
 - Frontend: http://localhost:3000
 - API: http://localhost:8000
 - Admin: http://localhost:8000/admin
@@ -266,6 +281,77 @@ Once the backend is running, visit:
 - `GET /api/schematics/trending/` - Get trending schematics
 
 ## 🧪 Testing
+
+### Test Mode with Dummy Data
+
+For development and testing purposes, you can easily load dummy schematic data to test browsing, searching, and detail views without manually creating schematics.
+
+#### Quick Start with Helper Script
+
+```bash
+# Load test data
+./scripts/test-data.sh load
+
+# Clear test data
+./scripts/test-data.sh clear
+
+# Reload fresh test data
+./scripts/test-data.sh reload
+```
+
+#### Using Docker Compose
+
+**Load test data:**
+```bash
+docker-compose exec backend python manage.py load_test_schematics
+```
+
+**Clear test data:**
+```bash
+docker-compose exec backend python manage.py clear_test_schematics
+```
+
+**Reload fresh test data:**
+```bash
+docker-compose exec backend python manage.py load_test_schematics --clear
+```
+
+#### Manual Setup
+
+**Load test data:**
+```bash
+cd backend
+python manage.py load_test_schematics
+```
+
+**Clear test data:**
+```bash
+python manage.py clear_test_schematics
+```
+
+#### What's Included
+
+The test data includes:
+- **8 diverse schematic examples** covering different categories:
+  - Medieval Castle
+  - Modern Villa
+  - Redstone Calculator
+  - Fantasy Treehouse
+  - Automated Farm
+  - Medieval Town Square
+  - Sci-Fi Space Station
+  - Starter Cottage
+- **3 test users** (testuser1, testuser2, testuser3) - password: `testpass123`
+- **8 common tags** (medieval, modern, fantasy, redstone, house, castle, farm, city)
+- **Realistic statistics** (download counts, view counts, dimensions)
+- All schematics marked as **clean** scan status for immediate testing
+
+This data allows you to:
+- ✅ Test the schematic browsing interface
+- ✅ Verify search and filtering functionality
+- ✅ Test detail views and download flows
+- ✅ Validate pagination and sorting
+- ✅ Check tag filtering and categorization
 
 ### Backend Tests
 ```bash
