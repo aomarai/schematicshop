@@ -32,7 +32,7 @@ clamd==1.0.2
 
 # Validation
 pydantic==2.5.3
-python-multipart==0.0.18
+python-multipart==0.0.22
 
 # API Documentation
 drf-spectacular==0.27.0
